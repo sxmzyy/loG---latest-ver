@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Android Forensic Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; color: #111; margin: 24px; }
+    header { text-align: center; margin-bottom: 24px; }
+    h1 { font-size: 26px; margin: 0; }
+    h2 { font-size: 20px; border-bottom: 1px solid #ddd; padding-bottom: 6px; margin-top: 28px; }
+    h3 { font-size: 16px; margin-bottom: 6px; }
+    .meta { margin-top: 6px; color: #444; }
+    .section { margin-bottom: 18px; }
+    .stats { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 10px; }
+    .card { border: 1px solid #ddd; padding: 10px; min-width: 180px; border-radius: 4px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; text-align: left; }
+    th { background: #f7f7f7; }
+    ul { margin: 6px 0 0 18px; }
+    .badge { display: inline-block; padding: 3px 8px; background: #0b7dda; color: white; border-radius: 4px; font-size: 11px; }
+    .muted { color: #666; }
+    .sample { background: #f9f9f9; border: 1px solid #eee; padding: 8px; margin: 4px 0; font-family: Consolas, monospace; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Android Forensic Analysis Report</h1>
+    <div class="meta">Generated: {{ generated_at }} | Case: {{ case_number }} | Examiner: {{ examiner }}</div>
+  </header>
+
+  <div class="section">
+    <h2>Chain of Custody</h2>
+    <ul>
+      {% for step in chain_of_custody %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Methodology</h2>
+    <ul>
+      {% for step in methodology %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+
+  <div class="section">
+    <h2>Device Information</h2>
+    <div class="stats">
+      <div class="card"><strong>Model</strong><br>{{ device.model }}</div>
+      <div class="card"><strong>Android</strong><br>{{ device.android_version }}</div>
+      <div class="card"><strong>Kernel</strong><br>{{ device.kernel }}</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>Call Log Analysis</h2>
+    <div class="stats">
+      <div class="card"><strong>Total Calls</strong><br>{{ calls.total }}</div>
+      <div class="card"><strong>Incoming</strong><br>{{ calls.incoming }}</div>
+      <div class="card"><strong>Outgoing</strong><br>{{ calls.outgoing }}</div>
+      <div class="card"><strong>Missed</strong><br>{{ calls.missed }}</div>
+    </div>
+    {% if calls.top_callers %}
+    <h3>Top Callers</h3>
+    <table>
+      <tr><th>Number</th><th>Count</th></tr>
+      {% for number, count in calls.top_callers %}
+      <tr><td>{{ number }}</td><td>{{ count }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">No caller frequency data available.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <h2>SMS Analysis</h2>
+    <div class="stats">
+      <div class="card"><strong>Total Messages</strong><br>{{ sms.total }}</div>
+      <div class="card"><strong>Incoming</strong><br>{{ sms.incoming }}</div>
+      <div class="card"><strong>Outgoing</strong><br>{{ sms.outgoing }}</div>
+    </div>
+    {% if sms.top_senders %}
+    <h3>Top Senders</h3>
+    <table>
+      <tr><th>Number</th><th>Count</th></tr>
+      {% for number, count in sms.top_senders %}
+      <tr><td>{{ number }}</td><td>{{ count }}</td></tr>
+      {% endfor %}
+    </table>
+    {% else %}
+    <p class="muted">No sender frequency data available.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <h2>Logcat Summary</h2>
+    <div class="stats">
+      <div class="card"><strong>Total Entries</strong><br>{{ logcat.total }}</div>
+      <div class="card"><strong>Recent Sample</strong><br><span class="badge">{{ logcat.recent_label }}</span></div>
+    </div>
+    {% if logcat.recent_sample %}
+    <h3>Recent Log Entries</h3>
+    {% for line in logcat.recent_sample %}
+    <div class="sample">{{ line }}</div>
+    {% endfor %}
+    {% else %}
+    <p class="muted">No logcat data available.</p>
+    {% endif %}
+  </div>
+
+  <div class="section">
+    <h2>Conclusion</h2>
+    <p>This report summarizes Android log acquisition and triage performed with the forensic tool. Findings should be correlated with case context, additional artifacts, and validated against chain-of-custody records prior to submission.</p>
+    <p>Examiner Signature: __________________________</p>
+    <p>Date: {{ generated_at.split(' ')[0] }}</p>
+  </div>
+</body>
+</html>
