@@ -7,6 +7,10 @@
 // Debug mode
 define('DEBUG_MODE', true);
 
+// Application Info
+define('APP_VERSION', 'v2.1.0');
+define('APP_RELEASE_DATE', '2026-01-20');
+
 // Base paths
 define('BASE_PATH', dirname(__DIR__));
 define('LOGS_PATH', dirname(BASE_PATH) . '/logs');
@@ -32,7 +36,7 @@ if (!is_dir(LOGS_PATH)) {
 // Theme Colors (matching Python config.py)
 $THEME = [
     'primary_bg' => '#1e1e2e',
-    'secondary_bg' => '#2d2d44', 
+    'secondary_bg' => '#2d2d44',
     'panel_bg' => '#252538',
     'text_primary' => '#cdd6f4',
     'text_secondary' => '#a6adc8',
@@ -117,13 +121,13 @@ $TIME_RANGES = [
 
 // App info
 define('APP_NAME', 'Android Forensic Tool');
-define('APP_VERSION', '2.0.0');
 define('APP_AUTHOR', 'Forensic Analysis Team');
 
 /**
  * Get the correct logs path
  */
-function getLogsPath(): string {
+function getLogsPath(): string
+{
     if (is_dir(LOGS_PATH)) {
         return LOGS_PATH;
     }
@@ -139,7 +143,8 @@ function getLogsPath(): string {
 /**
  * Read log file safely
  */
-function readLogFile(string $filename): string {
+function readLogFile(string $filename): string
+{
     $path = getLogsPath() . '/' . $filename;
     if (file_exists($path)) {
         return file_get_contents($path);
@@ -150,7 +155,8 @@ function readLogFile(string $filename): string {
 /**
  * Get current page name for active menu highlighting
  */
-function getCurrentPage(): string {
+function getCurrentPage(): string
+{
     $page = basename($_SERVER['PHP_SELF'], '.php');
     return $page === 'index' ? 'dashboard' : $page;
 }

@@ -40,9 +40,15 @@ $currentPage = getCurrentPage();
 
     <!-- Custom Forensic Theme - MUST BE LAST TO OVERRIDE DEFAULTS -->
     <link rel="stylesheet" href="<?= $basePath ?? '' ?>assets/css/custom.css?v=<?= time() ?>">
-    
+
     <!-- Toggle Component - Standardized Toggle Row Styling -->
     <link rel="stylesheet" href="<?= $basePath ?? '' ?>assets/css/toggle-component.css?v=<?= time() ?>">
+
+    <!-- Mobile Responsive Design -->
+    <link rel="stylesheet" href="<?= $basePath ?? '' ?>assets/css/responsive.css?v=<?= time() ?>">
+
+    <!-- Viewport meta tag for mobile -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 </head>
 
 <body class="layout-fixed sidebar-expand-lg bg-body-tertiary">

@@ -6,10 +6,10 @@ Write-Host " Android Forensic Tool - Web Server" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-# Kill any existing PHP processes on port 8000
+# Kill any existing PHP processes on port 8082
 Write-Host "Stopping any existing PHP servers..." -ForegroundColor Yellow
 
-$connections = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
+$connections = Get-NetTCPConnection -LocalPort 8082 -ErrorAction SilentlyContinue
 if ($connections) {
     foreach ($conn in $connections) {
         $process = Get-Process -Id $conn.OwningProcess -ErrorAction SilentlyContinue
@@ -22,15 +22,13 @@ if ($connections) {
 }
 
 Write-Host ""
-Write-Host "Starting PHP Development Server..." -ForegroundColor Green
-Write-Host ""
-Write-Host "Server URL: " -NoNewline
-Write-Host "http://127.0.0.1:8080" -ForegroundColor Cyan
-Write-Host "Press Ctrl+C to stop the server"
+Write-Host "Starting PHP Development Server on port 8082..." -ForegroundColor Green
+Write-Host "Access the tool at: http://127.0.0.1:8082" -ForegroundColor Cyan
+Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
 # Start the server
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $scriptPath
-& ".\php\php.exe" -S 127.0.0.1:8080 -t web
+& ".\php\php.exe" -S 127.0.0.1:8082 -t web

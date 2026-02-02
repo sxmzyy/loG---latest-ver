@@ -39,7 +39,8 @@ def get_logcat():
             print(f"   Using fallback: 7 days")
         
         with open("logs/android_logcat.txt", "w", encoding="utf-8") as f:
-            subprocess.run(["adb", "logcat", "-d", "-v", "time", "-T", since],
+            # Extract ALL available logs with -b all to capture main, system, radio, events, crash
+            subprocess.run(["adb", "logcat", "-b", "all", "-d", "-v", "time"],
                            stdout=f, check=True)
         
         return buffer_info  # Return info for GUI display
@@ -117,6 +118,32 @@ def get_location_logs():
     
     with open("logs/location_logs.txt", "w", encoding="utf-8") as f:
         f.write(output)
+
+def get_contacts():
+    """
+    Extract Android contacts using the adb content query command.
+    Retrieves contact names, phone numbers, and email addresses.
+    """
+    try:
+        result = subprocess.run(
+            ["adb", "shell", "content", "query", "--uri", "content://com.android.contacts/data"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+            timeout=30  # Add timeout to prevent hanging
+        )
+        output = result.stdout if result.stdout else "⚠️ No contacts found."
+    except subprocess.TimeoutExpired:
+        output = "⚠️ Contact extraction timed out. This may happen on devices with many contacts."
+    except Exception as e:
+        output = f"⚠️ Failed to extract contacts: {str(e)}"
+    
+    with open("logs/contacts.txt", "w", encoding="utf-8") as f:
+        f.write(output)
+    
+    print(f"📇 Contact extraction complete")
 
 def trigger_location_update():
     """

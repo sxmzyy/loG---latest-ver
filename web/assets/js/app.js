@@ -637,23 +637,32 @@ function hideLoading() {
 // EXPORT FUNCTIONS
 // ========================================
 function exportFullReport() {
-    showLoading('Generating report...');
+    showLoading('Generating forensic report...');
 
     fetch(ForensicApp.config.apiBase + 'export-report.php', {
-        method: 'POST'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
     })
-        .then(response => response.blob())
-        .then(blob => {
+        .then(response => response.json())
+        .then(data => {
             hideLoading();
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'forensic_report_' + new Date().toISOString().slice(0, 10) + '.pdf';
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-            a.remove();
-            showToast('Report downloaded successfully', 'success');
+
+            if (data.success) {
+                showToast('Report generated successfully!', 'success');
+
+                // Open the report in a new tab
+                if (data.downloadUrl) {
+                    window.open(data.downloadUrl, '_blank');
+                }
+
+                // Also show a download link
+                if (data.filename) {
+                    const message = `Report generated: ${data.filename}`;
+                    showToast(message, 'success', 6000);
+                }
+            } else {
+                showToast('Failed to generate report: ' + (data.error || 'Unknown error'), 'danger');
+            }
         })
         .catch(error => {
             hideLoading();

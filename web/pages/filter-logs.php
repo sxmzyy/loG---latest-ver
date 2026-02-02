@@ -232,21 +232,50 @@ require_once '../includes/sidebar.php';
                             <p class="text-muted">Configure the filter options above and click "Apply Filters"</p>
                         </div>
 
-                        <table id="filterTable" class="table table-striped table-hover"
-                            style="width:100%; display: none;">
-                            <thead>
-                                <tr>
-                                    <th><i class="fas fa-clock me-1"></i>Timestamp</th>
-                                    <th><i class="fas fa-tag me-1"></i>Type</th>
-                                    <th><i class="fas fa-exclamation-circle me-1"></i>Level</th>
-                                    <th><i class="fas fa-comment me-1"></i>Content</th>
-                                </tr>
-                            </thead>
-                            <tbody id="filterTableBody">
-                            </tbody>
-                        </table>
+                        <div class="table-responsive" style="max-height: 600px; overflow-x: auto; overflow-y: auto;">
+                            <table id="filterTable" class="table table-striped table-hover"
+                                style="width: auto; display: none; white-space: nowrap;">
+                                <thead>
+                                    <tr>
+                                        <th><i class="fas fa-clock me-1"></i>Timestamp</th>
+                                        <th><i class="fas fa-tag me-1"></i>Type</th>
+                                        <th><i class="fas fa-exclamation-circle me-1"></i>Level</th>
+                                        <th><i class="fas fa-comment me-1"></i>Content</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="filterTableBody">
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
+
+                <style>
+                    /* Custom scrollbar styling for filter results table */
+                    .table-responsive::-webkit-scrollbar {
+                        width: 12px;
+                        height: 12px;
+                    }
+
+                    .table-responsive::-webkit-scrollbar-track {
+                        background: var(--bg-darker);
+                        border-radius: 6px;
+                    }
+
+                    .table-responsive::-webkit-scrollbar-thumb {
+                        background: var(--border-soft);
+                        border-radius: 6px;
+                        border: 2px solid var(--bg-panel);
+                    }
+
+                    .table-responsive::-webkit-scrollbar-thumb:hover {
+                        background: var(--accent-primary);
+                    }
+
+                    .table-responsive::-webkit-scrollbar-corner {
+                        background: var(--bg-darker);
+                    }
+                </style>
             </div>
 
             <!-- Saved Presets -->
@@ -381,12 +410,14 @@ function displayResults(results) {
     noResults.style.display = 'none';
     table.style.display = 'table';
     
+    const keyword = document.getElementById('filterKeyword').value;
+    
     tbody.innerHTML = results.map(row => `
         <tr>
-            <td><small>${row.timestamp || '--'}</small></td>
-            <td><span class="badge bg-info">${row.type || 'Log'}</span></td>
-            <td><span class="badge bg-${getLevelColor(row.level)}">${row.level || 'I'}</span></td>
-            <td class="text-truncate" style="max-width: 500px;">${escapeHtml(row.content || '')}</td>
+            <td style="white-space: nowrap;"><small>${row.timestamp || '--'}</small></td>
+            <td style="white-space: nowrap;"><span class="badge bg-info">${row.type || 'Log'}</span></td>
+            <td style="white-space: nowrap;"><span class="badge bg-${getLevelColor(row.level)}">${row.level || 'I'}</span></td>
+            <td style="word-break: break-word; max-width: 800px;">${highlightKeyword(escapeHtml(row.content || ''), keyword)}</td>
         </tr>
     `).join('');
     
@@ -406,6 +437,14 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+function highlightKeyword(text, keyword) {
+    if (!keyword || keyword.trim() === '') return text;
+    
+    // Case-insensitive highlighting
+    const regex = new RegExp(`(${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    return text.replace(regex, '<mark class="bg-warning text-dark">$1</mark>');
 }
 
 function resetFilters() {

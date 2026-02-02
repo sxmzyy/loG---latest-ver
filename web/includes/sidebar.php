@@ -56,13 +56,6 @@ $menuItems = [
         'badge' => null
     ],
     [
-        'id' => 'app_intelligence',
-        'title' => 'App Intelligence',
-        'icon' => 'fas fa-brain',
-        'url' => ($basePath ?? '') . 'pages/app-intelligence.php',
-        'badge' => null
-    ],
-    [
         'id' => 'logcat',
         'title' => 'Logcat Viewer',
         'icon' => 'fas fa-file-code',
@@ -70,9 +63,59 @@ $menuItems = [
         'badge' => null
     ],
     [
+        'id' => 'divider_forensics',
+        'type' => 'header',
+        'title' => 'FORENSIC INTELLIGENCE'
+    ],
+    [
+        'id' => 'mule-hunter',
+        'title' => 'Mule Hunter',
+        'icon' => 'fas fa-piggy-bank',
+        'url' => ($basePath ?? '') . 'pages/mule-hunter.php',
+        'badge' => ['id' => 'muleRisk', 'color' => 'danger', 'value' => '!']
+    ],
+    [
+        'id' => 'timeline-advanced',
+        'title' => 'Advanced Timeline',
+        'icon' => 'fas fa-history',
+        'url' => ($basePath ?? '') . 'pages/timeline-advanced.php',
+        'badge' => null
+    ],
+    [
+        'id' => 'privacy-profiler',
+        'title' => 'Privacy Profiler',
+        'icon' => 'fas fa-user-secret',
+        'url' => ($basePath ?? '') . 'pages/privacy-profiler.php',
+        'badge' => null
+    ],
+    [
+        'id' => 'social-graph',
+        'title' => 'Social Link Graph',
+        'icon' => 'fas fa-project-diagram',
+        'url' => ($basePath ?? '') . 'pages/social-graph.php',
+        'badge' => null
+    ],
+    // Removed non-functional features on modern Android:
+    // - Network Intel (inconsistent data)
+    // - PII Detector (privacy restrictions)
+    // - Power Forensics (limited logging)
+    // - Intent Hunter (filtered logs)
+    // - Beacon Map (WiFi/BT logging restricted)
+    // - Clipboard Recovery (Android 10+ blocks content)
+    // - App Sessionizer (ActivityManager verbosity issues)
+
+    [
         'id' => 'divider2',
         'type' => 'header',
         'title' => 'TOOLS'
+    ],
+
+    [
+        'id' => 'global-search',
+        'title' => 'Global Search',
+        'icon' => 'fas fa-search',
+        'url' => ($basePath ?? '') . 'pages/global-search.php',
+        'badge' => null
     ],
     [
         'id' => 'filter-logs',
@@ -114,6 +157,21 @@ $menuItems = [
         'url' => '#',
         'badge' => null,
         'onclick' => 'exportFullReport()'
+    ],
+    [
+        'id' => 'pdf-report',
+        'title' => 'PDF Report',
+        'icon' => 'fas fa-file-pdf',
+        'url' => ($basePath ?? '') . 'api/generate-pdf-report.php?hashes=1&audit=1',
+        'badge' => null,
+        'target' => '_blank'
+    ],
+    [
+        'id' => 'legal-disclaimer',
+        'title' => 'Legal Disclaimer',
+        'icon' => 'fas fa-gavel',
+        'url' => ($basePath ?? '') . 'pages/legal-disclaimer.php',
+        'badge' => null
     ]
 ];
 ?>
@@ -144,9 +202,8 @@ $menuItems = [
                                 <?= isset($item['onclick']) ? 'onclick="' . $item['onclick'] . '; return false;"' : '' ?>>
                                 <i class="<?= $item['icon'] ?>"></i>
                                 <span><?= $item['title'] ?></span>
-                                <?php if ($item['badge']): ?>
-                                    <span class="badge bg-<?= $item['badge']['color'] ?>"
-                                        id="<?= $item['badge']['id'] ?>">
+                                <?php if (isset($item['badge']) && $item['badge']): ?>
+                                    <span class="badge bg-<?= $item['badge']['color'] ?>" id="<?= $item['badge']['id'] ?>">
                                         <?= $item['badge']['value'] ?>
                                     </span>
                                 <?php endif; ?>
@@ -159,11 +216,5 @@ $menuItems = [
         </nav>
     </div>
 
-    <!-- Sidebar Footer -->
-    <div class="sidebar-footer p-2 text-center">
-        <small class="text-muted">
-            <i class="fas fa-code me-1"></i> v<?= APP_VERSION ?>
-        </small>
-    </div>
 </aside>
 <!-- /Sidebar -->

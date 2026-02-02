@@ -1,4 +1,4 @@
-import tkinter as tk
+5import tkinter as tk
 from tkinter import ttk
 import gui
 print(f"GUI File: {gui.__file__}")

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Forensic Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 40px; text-align: center; margin-bottom: 30px; border-radius: 10px; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; }
+        .section { background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section h2 { color: #1e3c72; border-bottom: 2px solid #2a5298; padding-bottom: 10px; margin-bottom: 20px; }
+        .stat-box { display: inline-block; background: #f0f4f8; padding: 15px 25px; border-radius: 8px; margin-right: 15px; margin-bottom: 10px; }
+        .stat-box .value { font-size: 2rem; font-weight: bold; color: #1e3c72; }
+        .stat-box .label { font-size: 0.9rem; color: #666; }
+        .log-preview { background: #0d1117; color: #c9d1d9; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 0.85rem; overflow-x: auto; max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 0.9rem; }
+        @media print { body { background: white; } .section { box-shadow: none; border: 1px solid #ddd; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Android Forensic Report</h1>
+            <p>Generated: 2026-01-22 10:41:22</p>
+        </div>        <div class="section">
+            <h2>SMS Messages</h2>
+            <div class="stat-box">
+                <div class="value">2991</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">Row: 0 _id=3593, thread_id=1317, address=JX-PPINST-S, person=NULL, date=1769060712938, date_sent=1769060713000, protocol=0, read=0, status=-1, type=1, reply_path_present=0, subject=proto:CjoKImNvbS5nb29nbGUuYW5kcm9pZC5hcHBzLm1lc3NhZ2luZy4SFCIAKhDXQe9DA9RMAL3/RATW8rxY, body=256897 is your PrepInsta Login OTP. Follow us on Instagram to get offcampus updates. Team PrepInsta, service_center=+917019075011, locked=0, sub_id=1, error_code=-1, creator=com.google.android.apps.messaging, seen=1, priority=-1
+Row: 1 _id=3592, thread_id=867, address=JT-JIOVOC-S, person=NULL, date=1769060641104, date_sent=1769060641000, protocol=0, read=0, status=-1, type=1, reply_path_present=0, subject=proto:CjoKImNvbS5nb29nbGUuYW5kcm9pZC5hcHBzLm1lc3NhZ2luZy4SFCIAKhB/MhU/SEZND64CkBxuy7/5, body=உங்களின் கருத்து எங்களுக்கு முக்கியமானது
+Jio மொபைல் சேவை அனுபவத்தைப் பற்றிய உங்கள் மதிப்புமிக்க கருத்தைப் பகிர்ந்து கொள்ள 30 வினாடிகள் ஒதுக்குங்கள்
+www.jio.com/r/CLt0LWWKO, service_center=+919014300414, locked=0, sub_id=1, error_code=-1, creator=com.google.android.apps.messaging, seen=1, priority=-1
+Row: 2 _id=3591, thread_id=1316, address=VM-FNCHRO-P, person=NULL, date=1769059787964, date_sent=1769059787000, protocol=0, read=0, status=-1, type=1, reply_path_present=0, subject=proto:CjoKImNvbS5nb29nbGUuYW5kcm9pZC5hcHBzLm1lc3NhZ2luZy4SFCIAKhDeWRLLjCZAPI/JbRduoIrT, body=Rs. 60,000* loan Will be credited to your Bank A/c on 22.01.2026. Use OTP 2381 to Apply for loan http://pu1.in/FNCHRO/gkhVVT -Finance Hero, service_center=+917012075009, locked=0, sub_id=1, error_code=-1, creator=com.google.android.apps.messaging, seen=1, priority=-1
+Row: 3 _id=3590, thread_id=1315, address=BH-CKYCR-S, person=NULL, date=1769055271887, date_sent=1769055270000, protocol=0, read=0</div>
+        </div>        <div class="section">
+            <h2>Call Logs</h2>
+            <div class="stat-box">
+                <div class="value">147</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">Row: 0 formatted_number=NULL, duration=53, subject=, is_call_log_phone_account_migration_pending=0, subscription_id=1, photo_id=0, post_dial_digits=, call_screening_app_name=NULL, priority=-1, number=+916382372387, countryiso=IN, photo_uri=NULL, geocoded_location=India, missed_reason=0, is_business_call=0, block_reason=0, subscription_component_name=com.android.phone/com.android.services.telephony.TelephonyConnectionService, add_for_all_users=1, numbertype=NULL, features=68, transcription=NULL, last_modified=1768411282836, _id=15045, new=1, date=1768411227699, name=BEN, type=1, presentation=1, via_number=, numberlabel=NULL, normalized_number=+916382372387, composer_photo_uri=NULL, phone_account_address=919344458459, phone_account_hidden=0, lookup_uri=NULL, voicemail_uri=NULL, matched_number=NULL, transcription_state=0, data_usage=NULL, location=NULL, asserted_display_name=NULL, call_screening_component_name=NULL, is_read=NULL
+Row: 1 formatted_number=NULL, duration=14, subject=, is_call_log_phone_account_migration_pending=0, subscription_id=1, photo_id=0, post_dial_digits=, call_screening_app_name=NULL, priority=-1, number=+916382372387, countryiso=IN, photo_uri=NULL, geocoded_location=India, missed_reason=0, is_business_call=0, block_reason=0, subscription_component_name=com.android.phone/com.android.services.telephony.TelephonyConnectionService, add_for_all_users=1, numbertype=NULL, features=68, transcription=NULL, last_modified=1768414988277, _id=15046, new=1, date=1768414965068, name=BEN, type=1, presentation=1, via_number=, numberlabel=NULL, normalized_number=+916382372387, composer_photo_uri=NULL, phone_account_address=919344458459, phone_account_hidden=0, lookup_uri=NULL, voicemail_uri=NULL, matched_number=NULL, transcription_state=0, data_usage=NULL, location=NULL, asserted_display_name=NULL, call_screening_component_name=NULL, is_read=NULL
+Row: 2 formatted_number=NULL, duration=9, subject=NULL, is_call_log_phone_account_migration_pending=0, subscription_id=1</div>
+        </div>        <div class="section">
+            <h2>Location Data</h2>
+            <div class="stat-box">
+                <div class="value">0</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">Location Manager State:
+  User Info:
+    current users: u[0, 10]
+  Location Settings:
+    Location Setting: false
+    Location Allow/Deny Packages:
+    Throttling Allow Packages:
+      com.google.android.gms
+    Emergency Bypass Allow Packages:
+      com.google.android.dialer[*]
+      com.google.android.gms[.thunderbird]
+  Location Controller Extra Package: com.google.android.gms.location.history [enabled]
+  Location Providers:
+    passive provider:
+      service: unregistered
+      listeners:
+        1000/android[SensorNotificationService]/09326EEB Request[PASSIVE, minUpdateInterval=+30m0s0ms, minUpdateDistance=100000.0, WorkSource{1000 android}] (inactive)
+      last location=
+      enabled=false
+      allowed=true
+      identity=1000/android[LocationService]
+      properties=ProviderProperties[powerUsage=Low, accuracy=Fine]
+    network provider:
+      service: ProviderRequest[OFF]
+      listeners:
+        10121/com.google.android.as/9D137D7E {na} (COARSE) Request[@+6h0m0s0ms LOW_POWER, minUpdateDistance=100000.0, WorkSource{10121 com.google.android.as}] (inactive)
+        1000/android[GnssService]/918A9F9F Request[PASSIVE, minUpdateInterval=0, hiddenFromAppOps, WorkSource{1000 android}] (inactive)
+      last location=
+      enabled=false
+      allowed=true
+      identity=10135/com.google.android.gms[network_location_provider]
+      extra attribution tags={awareness_provider, activity_recognition_provider, network_location_provider, gnss_location_provider, network_location_calibration, current_semantic_location, fused_location_provider, wearable_flp_shim, geofencer_provider}
+      properties=ProviderProperties[powerUsage=Medium, accuracy=Fine, requires=network, supports=[altitude]]
+      target service=10135/com.google.android.gms/com.google.android.location.network.NetworkLocationService@2
+      connected=true
+    fused provider:
+      service: ProviderRequest[OFF]
+      last location=
+      enabled=false
+      allowed=true
+      identity=10135/com.google.android</div>
+        </div>        <div class="section">
+            <h2>System Logs (Logcat)</h2>
+            <div class="stat-box">
+                <div class="value">23600</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">--------- beginning of crash
+
+01-09 13:35:32.640 F/libc    (  573): Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 573 (init), pid 573 (init)
+
+01-09 13:35:32.729 F/libc    (  573): Crash due to signal: crash_dump helper failed to exec, or was killed
+
+01-19 13:00:19.170 F/libc    ( 4232): Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 4232 (init), pid 4232 (init)
+
+01-19 13:00:19.199 F/libc    ( 4232): Crash due to signal: crash_dump helper failed to exec, or was killed
+
+--------- beginning of kernel
+
+01-22 15:06:03.614 I/goodix_fp(  941): [info] goodix_panel_state_chg_callback go to the goodix_fb_state_chg_callback type = 3
+
+01-22 15:06:03.614 I/goodix_fp(  941): goodix_panel_state_chg_callback defalut
+
+01-22 15:06:03.616 E/        (  941): [drm:dsi_pwr_panel_regulator_mode_set [msm_drm]] *ERROR* [msm-dsi-error]: Regulator ibb was not found
+
+01-22 15:06:03.623 I/        (21297): [GTP-INF][drm_notifier_work_func] received lp event
+
+01-22 15:06:03.623 I/        (21297): [GTP-INF][goodix_ts_suspend] Suspend start
+
+01-22 15:06:03.623 I/        (21297): [GTP-INF][brl_irq_enbale] Irq disabled
+
+01-22 15:06:03.623 I/        (21297): [GTP-INF][goodix_generic_noti_callback] notify event type 0x3
+
+01-22 15:06:03.629 W/healthd ( 1390): time_last:161, soc_current_time=187730, soc_pre_time=187569,charging_status:0,soc_temp:92
+
+01-22 15:06:03.629 W/healthd ( 1390): battery l=92 v=4187 t=30.0 h=2 st=3 c=-1416000 fc=3899000 cc=1103 chg=
+
+01-22 15:06:03.636 W/healthd ( 1390): time_last:161, soc_current_time=187730, soc_pre_time=187569,charging_status:0,soc_temp:92
+
+01-22 15:06:03.639 W/HealthLoop( 1390): debug.nt.screen_brightness:2.637795
+
+01-22 15:06:03.668 I/        (21297): [GTP-INF][gsx_gesture_before_suspend] enter gesture mode, type[0x3000]
+
+01-22 15:06:03.668 I/        (21297): [GTP-INF][brl_irq_enbale] Irq enabled
+
+01-22 15:06:03.668 I/        (21297): [GTP-INF][goodix_ts_suspend] Canceled by module:Goodix_gsx_gesture
+
+01-22 15:06:03.668 I/        (21297): [GTP-INF][goodix_ts_suspend] Suspend end
+
+01-22 15:06:03.720 W/healthd ( 1390): time_last:161, soc_current_time=187730, soc_pre_time=187569,charging_status:0,soc_temp:92
+
+01-22 15:06:03.731 W/healthd ( 1390): time_last:161, soc_current_time=187730, soc_pre_time=187569,charging_status:0,soc_temp:92
+
+01-22 15:06:03.842 I/msm_cvp (20442): pwr: cvp (eva) power collapsed
+
+01-22 15:06:04.143 E/ufshcd-qcom 1d84000.ufshc(  964): manual_gc_show status=2
+
+01-22 15:06:04.500 E/simulated_ntc( 4282): proc_shell_write write invalid para
+
+01-22 15:06:04.760 I/servicemanager(  526): Caller(pid=1035,uid=1017,sid=u:r:keystore:s0) Found android.hardware.security.keymint.IRemotelyProvisionedComponent/default in device VINTF manifest.
+
+01-22 15:06:04.781 I/servicemanager(  526): Caller(pid=9570,uid=10377,sid=u:r:rkpdapp:s0:c121,c257,c512,c768) Found android.hardware.security.keymint.IRemotelyProvisionedComponent/default in device VINTF manifest.
+
+01-22 15:06:04.798 I/servicemanager(  526): Caller(pid=1035,uid=1017,sid=u:r:keystore:s0) Found android.hardware.security.keymint.IRemotelyProvisionedComponent/default in device VINTF manifest.
+
+01-22 15:06:05.175 I/adsp_sleepmon( 1474): Audio: num_sessions=0,num_lpi_sessions=0,timer_pending=1
+
+01-22 15:06:05.178 D/tfa98xx 2-0034( 2385): tfa98xx_mute: state: 1, stream : 1
+
+01-22 15:06:05.178 D/tfa98xx 2-0035( 2385): tfa98xx_mute: state: 1, stream : 1
+
+01-22 15:06:05.178 I/waipio-asoc-snd soc( 2385): spf_core_platform:sound: check_userspace_service_state: pcm_id 19 state 0
+
+01-22 15:06:05.182 D/tfa98xx 2-0034( 2385): tfa98xx_mute: state: 1, stream : 0
+
+01-22 15:06:05.183 D/tfa98xx 2-0035( 2385): tfa98xx_mute: state: 1, stream : 0
+
+01-22 15:06:05.184 I/waipio-asoc-snd soc( 2385): spf_core_platform:sound: check_userspace_service_state: pcm_id 18 state 0
+
+01-22 15:06:05.189 D/tfa98xx_set_profile()( 1474): selected container profile [2]
+
+01-22 15:06:06.660 I/(virq   (30187): irq_count)- GICv3:IPI(1):525762526 GICv3:arch_timer(11):273093484 GICv3:IPI(6):72919814 GICv3:IPI(2):33480625 GICv3:ufshcd(33):20663122 GICv3:ipcc_0(30):20635393 GICv3:gsi(36):19474495 GICv3:apps_rsc(24):17106065 GICv3:msm_drm(252):16583002 ipcc:glink-native-adsp(365):12987005
+
+01-22 15:06:06.660 I/(cpu    (30187): irq_count)- 0:214018642 1:209163110 2:212081796 3:209460361 4:84118277 5:64165427 6:66564135 7:17232949
+
+01-22 15:06:06.660 I/(ipi    (30187): irq_count)- 0:525762526 1:33480625 2:0 3:0 4:0 5:72919814 6:0
+
+01-22 15:06:07.259 W/binder_cleanup_transaction(22128): 9 callbacks suppressed
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123090348, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123226218, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123252399, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123341594, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123356870, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123360111, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123379980, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123390515, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123425982, process died.
+
+01-22 15:06:07.259 I/binder  (22128): undelivered transaction 123476264, process died.
+
+01-22 15:06:08.799 I/goodix_fp(  941): [info] goodix_panel_state_chg_callback go to the goodix_fb_state_chg_callback type = 1
+
+01-22 15:06:08.833 E/        (  941): [drm:dsi_pwr_panel_regulator_mode_set [msm_drm]] *ERROR* [msm-dsi-error]: Regulator ibb was not found
+
+01-22 15:06:08.959 I/        (22732): [GTP-INF][drm_notifier_work_func] get suspend notification
+
+01-22 15:06:08.965 E/SELinux (  526): avc:  denied  { find } for pid=23561 uid=10274 name=adb scontext=u:r:untrusted_app:s0:c18,c257,c512,c768 tcontext=u:object_r:adb_service:s0 tclass=service_manager permissive=0
+
+01-22 15:06:08.966 E/SELinux (  526): avc:  denied  { find } for pid=23561 uid=10274 name=secure_element scontext=u:r:untrusted_app:s0:c18,c257,c512,c768 tcontext=u:object_r:secure_element_service:s0 tclass=service_manager permissive=0
+
+01-22 15:06:09.090 W/nt_vote ( 1469): FCC_MAIN: FCC_TEMPERATURE_CONTROL_VOTER,1 voting on of val=20000
+
+01-22 15:06:09.090 W/nt_vote ( 1469): FCC_MAIN: effective vote is now 9000 voted by FCC_NT_CHG_VOTER,0
+
+01-22 15:06:09.090 I/BATTERY_CHG( 1469): scenario_fcc_store: scenario_fcc_store,val:9000
+
+01-22 15:06:09.492 E/simulated_ntc( 4282): proc_shell_write write invalid para
+
+01-22 15:06:10.131 I/qcedev_ioctl( 1388): info: vaddr = ffc00000
+
+01-22 15:06:10.131 I/        ( 1388): , fd = 13
+
+01-22 15:06:10.134 I/qcedev_ioctl( 1388): info: vaddr = ff800000
+
+01-22 15:06:10.134 I/        ( 1388): , fd = 15
+
+01-22 15:06:10.140 I/qcedev_ioctl( 1388): info: vaddr = ff400000
+
+01-22 15:06:10.140 I/        ( 1388): , fd = 17
+
+01-22 15:06:10.240 I/adsp_sleepmon(  589): timer_event = 1,suspend_event = 0
+
+01-22 15:06:10.563 I/qcedev_ioctl( 1388): info: vaddr = ffc00000
+
+01-22 15:06:10.563 I/        ( 1388): , fd = 13
+
+01-22 15:06:10.568 I/qcedev_ioctl( 1388): info: vaddr = ff800000
+
+01-22 15:06:10.568 I/        ( 1388): , fd = 15
+
+01-22 15:06:10.574 I/qcedev_ioctl( 1388): info: vaddr = ff400000
+
+01-22 15:06:10.574 I/        ( 1388): , fd = 17
+
+01-22 15:06:10.639 W/audit   (24358): audit_lost=110085 audit_rate_limit=5 audit_backlog_limit=64
+
+01-22 15:06:10.639 E/audit   (24358): rate limit exceeded
+
+01-22 15:06:10.777 I/qcedev_ioctl( 1388): info: vaddr = ffc00000
+
+01-22 15:06:10.777 I/        ( 1388): , fd = 13
+
+01-22 15:06:10.780 I/qcedev_ioctl( 1388): info: vaddr = ff800000
+
+01-22 15:06:10.780 I/        ( 1388): , fd = 15
+
+01-22 15:06:10.783 I/qcedev_ioctl( 1388): info: vaddr = ff400000
+
+01-22 15:06:10.783 I/        ( 1388): , fd = 17
+
+01-22 15:06:14.490 E/simulated_ntc( 4282): proc_shell_write write invalid para
+
+01-22 15:06:14.592 W/audit   ( 3058): audit_lost=110088 audit_rate_limit=5 audit_backlog_limit=64
+
+01-22 15:06:14.592 E/audit   ( 3058): rate limit exceeded
+
+01-22 15:06:16.129 I/(virq   (20442): irq_count)- GICv3:IPI(1):525778071 GICv3:arch_timer(11):273109224 GICv3:IPI(6):72922484 GICv3:IPI(2):33482958 GICv3:ufshcd(33):20667336 GICv3:ipcc_0(30):20635673 GICv3:gsi(36):19475384 GICv3:apps_rsc(24):17106985 GICv3:msm_drm(252):16583010 ipcc:glink-native-adsp(365):12987024
+
+01-22 15:06:16.129 I/(cpu    (20442): irq_count)- 0:214028524 1:209169527 2:212091479 3:209466487 4:84122710 5:64168536 6:66567325 7:17233310
+
+01-22 15:06:16.129 I/(ipi    (20442): irq_count)- 0:525778071 1:33482958 2:0 3:0 4:0 5:72922484 6:0
+
+01-22 15:06:19.492 E/simulated_ntc( 4282): proc_shell_write write invalid para
+
+01-22 15:06:24.115 W/audit   ( 3058): audit_lost=110091 audit_rate_limit=5 audit_backlog_limit=64
+
+01-22 15:06:24.115 E/audit   ( 3058): rate limit exceeded
+
+01-22 15:06:24.490 E/simulated_ntc( 4282): proc_shell_write write invalid para
+
+01-22 15:06:25.604 I/(virq   ( 1558): irq_count)- GICv3:IPI(1):525783897 GICv3:arch_timer(11):273118323 GICv3:IPI(6):72923288 GICv3:IPI(2):33483332 GICv3:ufshcd(33):20667393 GICv3:ipcc_0(30):20635716 GICv3:gsi(36):19475663 GICv3:apps_rsc(24):17107535 GICv3:msm_drm(252):16583010 ipcc:glink-native-adsp(365):12987047
+
+01-22 15:06:25.604 I/(cpu    ( 1558): irq_count)- 0:214032978 1:209174232 2:212095080 3:209470620 4:84122886 5:64168562 6:66567524 7:17233356
+
+01-22 15:06:25.604 I/(ipi    ( 1558): irq_count)- 0:525783898 1:33483332 2:0 3:0 4:0 5:72923289 6:0
+
+01-22 15:06:26.839 W/binder_cleanup_transaction(21297): 9 callbacks suppressed
+
+01-22 15:06:26.839 I/binder  (21297): undelivered transaction 123226203, process died.
+
+01-22 15:06:26.839 I/binder  (21297): undelivered transaction 123248031, process died.
+
+01-22 15:06:26.839 I/binder  (21297): undelivered transaction 123252391, process died.
+
+01-22 15:06:26.839 I/binder  (21297): undelivered transaction 123341583, process died.
+
+01-22 15:06:26.839 I/binder  (21297): undelivered transaction 123348708, process died.
+</div>
+        </div>        <div class="footer">
+            <p>This report was generated by Android Forensic Tool</p>
+            <p>© 2024 - For authorized forensic use only</p>
+        </div>
+    </div>
+</body>
+</html>

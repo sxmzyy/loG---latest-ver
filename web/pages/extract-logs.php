@@ -151,7 +151,7 @@ require_once '../includes/sidebar.php';
                                         <input class="form-check-input" type="checkbox" id="extractLogcat" checked>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Toggle Row: Call Logs -->
                                 <div class="toggle-row">
                                     <label class="toggle-row-label" for="extractCalls">
@@ -162,7 +162,7 @@ require_once '../includes/sidebar.php';
                                         <input class="form-check-input" type="checkbox" id="extractCalls" checked>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Toggle Row: SMS -->
                                 <div class="toggle-row">
                                     <label class="toggle-row-label" for="extractSms">
@@ -173,7 +173,7 @@ require_once '../includes/sidebar.php';
                                         <input class="form-check-input" type="checkbox" id="extractSms" checked>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Toggle Row: Location -->
                                 <div class="toggle-row">
                                     <label class="toggle-row-label" for="extractLocation">

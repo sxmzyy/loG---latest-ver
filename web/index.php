@@ -17,8 +17,10 @@ function getStats()
         'callCount' => 0,
         'locationCount' => 0,
         'threatCount' => 0,
+        'notificationCount' => 0,
         'lastExtraction' => null,
-        'deviceInfo' => null
+        'deviceInfo' => null,
+        'logcatLines' => 0
     ];
 
     // Count SMS
@@ -47,6 +49,33 @@ function getStats()
     $logcatFile = $logsPath . '/android_logcat.txt';
     if (file_exists($logcatFile)) {
         $stats['logcatLines'] = count(file($logcatFile));
+    }
+
+    // Count Notifications
+    $notifFile = $logsPath . '/notification_timeline.json';
+    if (file_exists($notifFile)) {
+        $json = json_decode(file_get_contents($notifFile), true);
+        if (is_array($json)) {
+            $stats['notificationCount'] = count($json);
+        }
+    }
+
+    // Count Threats (Dual Space + Security Events)
+    $dualSpaceFile = $logsPath . '/dual_space_analysis.json';
+    if (file_exists($dualSpaceFile)) {
+        $json = json_decode(file_get_contents($dualSpaceFile), true);
+        if (isset($json['mule_score']) && $json['mule_score'] > 0) {
+            $stats['threatCount'] += 1; // Count the overall risk as 1 threat unit
+            if (isset($json['cloned_banking_apps'])) {
+                $stats['threatCount'] += count($json['cloned_banking_apps']);
+            }
+        }
+    }
+
+    // Check unified timeline for high severity security events if needed
+    $timelineFile = $logsPath . '/unified_timeline.json';
+    if (file_exists($timelineFile)) {
+        // Optional: Scan unified timeline for type=SECURITY
     }
 
     return $stats;
@@ -181,7 +210,7 @@ $stats = getStats();
                                 <button class="btn btn-outline-primary" onclick="exportFullReport()">
                                     <i class="fas fa-file-pdf me-2"></i>Export Report
                                 </button>
-                                <button class="btn btn-outline-danger" onclick="clearAllData()">
+                                <button class="btn btn-outline-danger" onclick="clearAllData(event)">
                                     <i class="fas fa-trash-alt me-2"></i>Clear Data
                                 </button>
                             </div>
@@ -207,14 +236,12 @@ $stats = getStats();
                                 <!-- Device Image Container -->
                                 <div class="text-center mb-3">
                                     <div id="deviceImageContainer" style="position: relative; display: inline-block;">
-                                        <img id="deviceImage" 
-                                             src="assets/images/devices/generic-phone.svg" 
-                                             alt="Device" 
-                                             style="width: 120px; height: 200px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(34, 211, 238, 0.3));"
-                                             onerror="this.src='assets/images/devices/generic-phone.svg'">
+                                        <img id="deviceImage" src="assets/images/devices/generic-phone.svg" alt="Device"
+                                            style="width: 120px; height: 200px; object-fit: contain; filter: drop-shadow(0 4px 8px rgba(34, 211, 238, 0.3));"
+                                            onerror="this.src='assets/images/devices/generic-phone.svg'">
                                     </div>
                                 </div>
-                                
+
                                 <!-- Device Info -->
                                 <div class="text-center">
                                     <h5 class="mb-1" id="deviceModel">Checking...</h5>
@@ -522,7 +549,7 @@ function updateTopContacts(contacts) {
     });
 }
 
-function clearAllData() {
+function clearAllData(event) {
     // Show confirmation dialog
     if (!confirm('⚠️ WARNING: This will permanently delete all extracted log data.\n\nAre you sure you want to clear all data?')) {
         return;

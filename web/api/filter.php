@@ -89,6 +89,9 @@ try {
             break;
     }
 
+    // Debug logging - log once per request, not per line
+    file_put_contents(LOGS_PATH . '/debug_filter_request.log', date('Y-m-d H:i:s') . " - Input: " . json_encode($input) . "\n", FILE_APPEND);
+
     // Process each file
     foreach ($files as $file) {
         if (!file_exists($file))
@@ -144,11 +147,26 @@ try {
                 $level = $match[1];
             }
 
+            // Time filter
+            if ($timeThreshold > 0) {
+                // Try to parse timestamp
+                $logTime = 0;
+                // Format: 01-23 13:46:46.045
+                if (preg_match('/^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/', $line, $match)) {
+                    // Assume current year as it's not in the log
+                    $logTime = strtotime(date('Y') . '-' . $match[1]);
+                }
+
+                if ($logTime > 0 && $logTime < $timeThreshold) {
+                    continue;
+                }
+            }
+
             $results[] = [
                 'timestamp' => $timestamp,
                 'type' => str_replace('_', ' ', ucfirst($fileType)),
                 'level' => $level,
-                'content' => substr($line, 0, 500) // Limit content length
+                'content' => $line // No truncation - send full line
             ];
 
             // Limit results

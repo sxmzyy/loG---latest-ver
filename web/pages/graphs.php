@@ -8,10 +8,55 @@ $basePath = '../';
 require_once '../includes/header.php';
 require_once '../includes/sidebar.php';
 
-// Get log data for charts
-function getCallStats()
+// Get selected time range
+$timeRange = isset($_GET['range']) ? $_GET['range'] : '7d';
+$minTimestamp = 0;
+$now = time();
+
+switch ($timeRange) {
+    case '24h':
+        $minTimestamp = $now - (24 * 3600);
+        break;
+    case '7d':
+        $minTimestamp = $now - (7 * 24 * 3600);
+        break;
+    case '30d':
+        $minTimestamp = $now - (30 * 24 * 3600);
+        break;
+    case 'all':
+        $minTimestamp = 0;
+        break;
+}
+
+// Helper to build number->name map
+function buildContactMap($logsPath)
 {
-    $logsPath = getLogsPath();
+    $map = [];
+    $callFile = $logsPath . '/call_logs.txt';
+    if (file_exists($callFile)) {
+        $lines = explode("\n", file_get_contents($callFile));
+        foreach ($lines as $line) {
+            // Use \b to avoid matching 'formatted_number' or 'app_name'
+            // Match number and name independently on the line for safety
+            if (preg_match('/\bnumber=([^,]+)/', $line, $mNum) && preg_match('/\bname=([^,]+)/', $line, $mName)) {
+                $num = trim($mNum[1]);
+                $name = trim($mName[1]);
+                if ($name !== 'NULL' && $name !== '') {
+                    $map[$num] = $name;
+                }
+            }
+        }
+    }
+    return $map;
+}
+
+$logsPath = getLogsPath();
+$contactMap = buildContactMap($logsPath);
+
+// Get log data for charts
+function getCallStats($minTimestamp, $contactMap)
+{
+    global $logsPath;
     $callFile = $logsPath . '/call_logs.txt';
 
     $stats = [
@@ -32,6 +77,22 @@ function getCallStats()
         if (strpos($line, 'Row:') === false)
             continue;
 
+        // Get date
+        if (preg_match('/date=(\d+)/', $line, $match)) {
+            $timestamp = (int) (intval($match[1]) / 1000);
+
+            // Filter by time range
+            if ($timestamp < $minTimestamp)
+                continue;
+
+            $dayOfWeek = date('w', $timestamp);
+            $hour = date('G', $timestamp);
+            $stats['byDay'][$dayOfWeek]++;
+            $stats['byHour'][$hour]++;
+        } else {
+            continue;
+        }
+
         // Get type
         if (preg_match('/type=(\d+)/', $line, $match)) {
             switch ($match[1]) {
@@ -47,19 +108,22 @@ function getCallStats()
             }
         }
 
-        // Get date
-        if (preg_match('/date=(\d+)/', $line, $match)) {
-            $timestamp = (int) (intval($match[1]) / 1000);
-            $dayOfWeek = date('w', $timestamp);
-            $hour = date('G', $timestamp);
-            $stats['byDay'][$dayOfWeek]++;
-            $stats['byHour'][$hour]++;
-        }
-
-        // Get caller
-        if (preg_match('/number=([^,]+)/', $line, $match)) {
+        // Get caller - STRICT MATCH
+        if (preg_match('/\bnumber=([^,]+)/', $line, $match)) {
             $number = trim($match[1]);
-            $callerCounts[$number] = ($callerCounts[$number] ?? 0) + 1;
+            // Extract name directly if present in this line, else valid from map
+            $name = isset($contactMap[$number]) && $contactMap[$number] !== 'NULL' ? $contactMap[$number] : $number;
+
+            // Fallback: If line has encoded name locally
+            // STRICT MATCH for name here too
+            if (preg_match('/\bname=([^,]+)/', $line, $nameMatch)) {
+                $rawName = trim($nameMatch[1]);
+                if ($rawName !== 'NULL' && $rawName !== '') {
+                    $name = $rawName;
+                }
+            }
+
+            $callerCounts[$name] = ($callerCounts[$name] ?? 0) + 1;
         }
     }
 
@@ -69,9 +133,9 @@ function getCallStats()
     return $stats;
 }
 
-function getSmsStats()
+function getSmsStats($minTimestamp, $contactMap)
 {
-    $logsPath = getLogsPath();
+    global $logsPath;
     $smsFile = $logsPath . '/sms_logs.txt';
 
     $stats = [
@@ -92,6 +156,22 @@ function getSmsStats()
         if (strpos($line, 'Row:') === false)
             continue;
 
+        // Get date
+        if (preg_match('/date=(\d+)/', $line, $match)) {
+            $timestamp = (int) (intval($match[1]) / 1000);
+
+            // Filter by time range
+            if ($timestamp < $minTimestamp)
+                continue;
+
+            $dayOfWeek = date('w', $timestamp);
+            $hour = date('G', $timestamp);
+            $stats['byDay'][$dayOfWeek]++;
+            $stats['byHour'][$hour]++;
+        } else {
+            continue;
+        }
+
         // Get type
         if (preg_match('/type=(\d+)/', $line, $match)) {
             if ($match[1] == '1')
@@ -100,19 +180,12 @@ function getSmsStats()
                 $stats['byType']['Sent']++;
         }
 
-        // Get date
-        if (preg_match('/date=(\d+)/', $line, $match)) {
-            $timestamp = (int) (intval($match[1]) / 1000);
-            $dayOfWeek = date('w', $timestamp);
-            $hour = date('G', $timestamp);
-            $stats['byDay'][$dayOfWeek]++;
-            $stats['byHour'][$hour]++;
-        }
-
         // Get contact
         if (preg_match('/address=([^,]+)/', $line, $match)) {
             $contact = trim($match[1]);
-            $contactCounts[$contact] = ($contactCounts[$contact] ?? 0) + 1;
+            // Try to resolve name from map (built from call logs)
+            $displayName = isset($contactMap[$contact]) ? $contactMap[$contact] : $contact;
+            $contactCounts[$displayName] = ($contactCounts[$displayName] ?? 0) + 1;
         }
     }
 
@@ -122,8 +195,8 @@ function getSmsStats()
     return $stats;
 }
 
-$callStats = getCallStats();
-$smsStats = getSmsStats();
+$callStats = getCallStats($minTimestamp, $contactMap);
+$smsStats = getSmsStats($minTimestamp, $contactMap);
 $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 ?>
 
@@ -159,18 +232,17 @@ $dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
                         <div class="col-md-4">
                             <label class="form-label"><i class="fas fa-calendar me-1"></i>Time Range</label>
                             <select class="form-select" id="timeRangeSelect" onchange="updateCharts()">
-                                <option value="7d" selected>Last 7 Days</option>
-                                <option value="24h">Last 24 Hours</option>
-                                <option value="30d">Last 30 Days</option>
-                                <option value="all">All Time</option>
+                                <option value="24h" <?= $timeRange == '24h' ? 'selected' : '' ?>>Last 24 Hours</option>
+                                <option value="7d" <?= $timeRange == '7d' ? 'selected' : '' ?>>Last 7 Days</option>
+                                <option value="30d" <?= $timeRange == '30d' ? 'selected' : '' ?>>Last 30 Days</option>
+                                <option value="all" <?= $timeRange == 'all' ? 'selected' : '' ?>>All Time</option>
                             </select>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label"><i class="fas fa-chart-bar me-1"></i>Chart Type</label>
-                            <select class="form-select" id="chartTypeSelect" onchange="updateCharts()">
+                            <select class="form-select" id="chartTypeSelect" disabled title="Feature coming soon">
                                 <option value="bar">Bar Chart</option>
                                 <option value="line">Line Chart</option>
-                                <option value="radar">Radar Chart</option>
                             </select>
                         </div>
                         <div class="col-md-4 text-end">
@@ -322,14 +394,16 @@ $callByDayJson = json_encode(array_values($callStats['byDay']));
 $callByTypeLabelsJson = json_encode(array_keys($callStats['byType']));
 $callByTypeValuesJson = json_encode(array_values($callStats['byType']));
 $callByHourJson = json_encode(array_values($callStats['byHour']));
-$topCallersLabelsJson = json_encode(array_map(fn($n) => substr($n, -4), array_keys($callStats['topCallers'])));
+// Use full keys (names) for labels, no substring
+$topCallersLabelsJson = json_encode(array_keys($callStats['topCallers']));
 $topCallersValuesJson = json_encode(array_values($callStats['topCallers']));
 
 $smsByDayJson = json_encode(array_values($smsStats['byDay']));
 $smsByTypeLabelsJson = json_encode(array_keys($smsStats['byType']));
 $smsByTypeValuesJson = json_encode(array_values($smsStats['byType']));
 $smsByHourJson = json_encode(array_values($smsStats['byHour']));
-$topSmsLabelsJson = json_encode(array_map(fn($n) => substr($n, -4), array_keys($smsStats['topContacts'])));
+// Use full keys (names/addresses)
+$topSmsLabelsJson = json_encode(array_keys($smsStats['topContacts']));
 $topSmsValuesJson = json_encode(array_values($smsStats['topContacts']));
 
 $additionalScripts = <<<SCRIPT
@@ -451,8 +525,8 @@ function exportAllCharts() {
 }
 
 function updateCharts() {
-    showToast('Charts updated with new settings', 'info');
-    // In production, this would fetch new data based on time range
+    const range = document.getElementById('timeRangeSelect').value;
+    window.location.search = '?range=' + range;
 }
 </script>
 SCRIPT;

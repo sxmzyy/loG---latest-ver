@@ -13,7 +13,14 @@ function parseCallLogs()
 {
     $logsPath = getLogsPath();
     $callFile = $logsPath . '/call_logs.txt';
+    $contactsMapFile = $logsPath . '/contacts_map.json';
     $records = [];
+
+    // Load contact mapping if exists
+    $contactsMap = [];
+    if (file_exists($contactsMapFile)) {
+        $contactsMap = json_decode(file_get_contents($contactsMapFile), true) ?? [];
+    }
 
     if (!file_exists($callFile)) {
         return $records;
@@ -28,19 +35,82 @@ function parseCallLogs()
 
         $record = [
             'contact' => 'Unknown',
+            'number' => '',
             'date' => '--',
             'time' => '--',
             'duration' => '0:00',
-            'type' => 'Unknown'
+            'type' => 'Unknown',
+            'app' => 'Phone' // Default app
         ];
 
-        // Extract number
-        if (preg_match('/number=([^,]+)/', $line, $match)) {
-            $record['contact'] = trim($match[1]);
+        // Strict Extraction using boundary check (Space or Start)
+        $name = 'NULL';
+        $number = 'NULL';
+        $component = 'NULL';
+
+        if (preg_match('/(?:^|\s)name=([^,]+)/', $line, $match))
+            $name = trim($match[1]);
+        if (preg_match('/(?:^|\s)number=([^,]+)/', $line, $match))
+            $number = trim($match[1]);
+        if (preg_match('/(?:^|\s)component_name=([^,]+)/', $line, $match))
+            $component = trim($match[1]);
+
+        // === Smart Name Logic ===
+        $displayName = $number;
+        $appSource = 'Phone';
+
+        // 1. Detect App
+        if (stripos($line, 'whatsapp') !== false) {
+            $appSource = 'WhatsApp';
+        } elseif (stripos($line, 'telegram') !== false) {
+            $appSource = 'Telegram';
         }
 
+        // 2. Resolve Name
+        // Priority: Log Name > Contacts Map > Number
+
+        // Check Log Name first
+        if ($name && $name !== 'NULL' && $name !== '') {
+            $displayName = $name;
+        }
+        // If Log Name is missing, try Contacts Map
+        else {
+            $mappedName = null;
+            $cleanNumber = preg_replace('/[^\d+]/', '', $number);
+
+            if (isset($contactsMap[$number])) {
+                $mappedName = $contactsMap[$number];
+            } elseif (isset($contactsMap[$cleanNumber])) {
+                $mappedName = $contactsMap[$cleanNumber];
+            } elseif (strlen($cleanNumber) >= 10) {
+                // Try last 10 digits
+                $last10 = substr($cleanNumber, -10);
+                // Iterate map to find suffix match (slow but effective for small lists)
+                foreach ($contactsMap as $k => $v) {
+                    if (str_ends_with($k, $last10)) {
+                        $mappedName = $v;
+                        break;
+                    }
+                }
+            }
+
+            if ($mappedName) {
+                $displayName = $mappedName;
+            }
+        }
+
+        // 3. Deduplication logic
+        // If the name is just the number, we treat it as "Unknown" for contact column usually, 
+        // but here we want "Use number instead of repeating name".
+        // Actually the Request is to show "WhatsApp Call: 12345" if name unknown.
+
+        $record['contact'] = $displayName;
+        $record['number'] = $number;
+        $record['app'] = $appSource;
+
+
         // Extract date
-        if (preg_match('/date=(\d+)/', $line, $match)) {
+        if (preg_match('/(?:^|\s)date=(\d+)/', $line, $match)) {
             $timestamp = (int) (intval($match[1]) / 1000);
             $record['date'] = date('Y-m-d', $timestamp);
             $record['time'] = date('H:i:s', $timestamp);
@@ -48,17 +118,17 @@ function parseCallLogs()
         }
 
         // Extract duration
-        if (preg_match('/duration=(\d+)/', $line, $match)) {
+        if (preg_match('/(?:^|\s)duration=(\d+)/', $line, $match)) {
             $seconds = intval($match[1]);
             $mins = floor($seconds / 60);
             $secs = $seconds % 60;
-            $record['duration'] = sprintf('%d:%02d', $mins, $secs);
-            $record['durationSec'] = $seconds;
+            $record['duration'] = sprintf("%d:%02d", $mins, $secs);
         }
 
         // Extract type
-        if (preg_match('/type=(\d+)/', $line, $match)) {
-            switch ($match[1]) {
+        if (preg_match('/(?:^|\s)type=(\d+)/', $line, $match)) {
+            $typeCode = $match[1];
+            switch ($typeCode) {
                 case '1':
                     $record['type'] = 'Incoming';
                     break;
@@ -68,14 +138,22 @@ function parseCallLogs()
                 case '3':
                     $record['type'] = 'Missed';
                     break;
+                case '4':
+                    $record['type'] = 'Voicemail';
+                    break;
+                case '5':
+                    $record['type'] = 'Rejected';
+                    break;
+                case '6':
+                    $record['type'] = 'Blocked';
+                    break;
                 default:
-                    $record['type'] = 'Unknown';
+                    $record['type'] = 'Unknown (' . $typeCode . ')';
             }
         }
 
         $records[] = $record;
     }
-
     return $records;
 }
 
@@ -209,8 +287,36 @@ $totalMins = floor(($totalDuration % 3600) / 60);
                                         <?php foreach ($callRecords as $call): ?>
                                             <tr>
                                                 <td>
-                                                    <i class="fas fa-user-circle me-2 text-muted"></i>
-                                                    <strong><?= htmlspecialchars($call['contact']) ?></strong>
+                                                    <div class="d-flex align-items-center">
+                                                        <i class="fas fa-user-circle fa-lg text-secondary me-3"></i>
+                                                        <div>
+                                                            <div class="fw-bold">
+                                                                <?= htmlspecialchars($call['contact']) ?>
+                                                                <?php if (isset($call['app']) && $call['app'] !== 'Phone'): 
+                                                                    $appIcon = match($call['app']) {
+                                                                        'WhatsApp' => 'fab fa-whatsapp',
+                                                                        'Telegram' => 'fab fa-telegram',
+                                                                        default => 'fas fa-mobile-alt'
+                                                                    };
+                                                                    $appColor = match($call['app']) {
+                                                                        'WhatsApp' => 'success',
+                                                                        'Telegram' => 'info',
+                                                                        default => 'secondary'
+                                                                    };
+                                                                ?>
+                                                                    <span class="badge bg-<?= $appColor ?> ms-1" style="font-size: 0.7em;">
+                                                                        <i class="<?= $appIcon ?> me-1"></i><?= $call['app'] ?>
+                                                                    </span>
+                                                                <?php endif; ?>
+                                                            </div>
+                                                            <!-- Show number if different from Contact Name -->
+                                                            <?php if ($call['number'] !== 'NULL' && $call['number'] !== $call['contact']): ?>
+                                                                <div class="small text-muted font-monospace">
+                                                                    <?= htmlspecialchars($call['number']) ?>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td><?= htmlspecialchars($call['date']) ?></td>
                                                 <td><?= htmlspecialchars($call['time']) ?></td>

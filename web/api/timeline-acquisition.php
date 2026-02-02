@@ -1,19 +1,13 @@
 <?php
 /**
- * Timeline Acquisition API
- * Provides forensic timeline extraction and event retrieval
- * 
- * Actions:
- * - extract: Trigger log extraction and timeline parsing
- * - get_events: Retrieve timeline events with filtering
- * - get_stats: Event statistics by category
+ * Timeline Acquisition API (Refactored)
+ * Bridges unified_timeline.py data to the legacy TimelineViewer
  */
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 
 require_once '../includes/config.php';
-require_once '../includes/services/TimelineAggregator.php';
 
 $action = $_GET['action'] ?? 'get_events';
 
@@ -22,221 +16,158 @@ try {
         case 'extract':
             extractTimeline();
             break;
-            
+
         case 'get_events':
             getEvents();
             break;
-            
-        case 'get_stats':
-            getStats();
-            break;
-            
-        case 'audit':
-            getAudit();
-            break;
-            
+
         default:
             echo json_encode(['success' => false, 'error' => 'Invalid action']);
     }
 } catch (Exception $e) {
     echo json_encode([
         'success' => false,
-        'error' => $e->getMessage(),
-        'trace' => DEBUG_MODE ? $e->getTraceAsString() : null
+        'error' => $e->getMessage()
     ]);
 }
 
-/**
- * Trigger timeline extraction from latest session
- */
 function extractTimeline()
 {
-    try {
-        $aggregator = new TimelineAggregator();
-        $result = $aggregator->extractTimeline();
-        
-        // Save to JSON for persistence
-        $logsPath = getLogsPath();
-        $outputFile = $logsPath . '/forensic_timeline.json';
-        
-        $data = [
-            'extracted_at' => date('c'),
-            'events' => array_map(function($event) {
-                return $event->toArray();
-            }, $result['events']),
-            'audit_log' => $result['audit_log'],
-            'metadata' => $result['metadata'],
-            'retention_notice' => $result['retention_notice']
-        ];
-        
-        file_put_contents($outputFile, json_encode($data, JSON_PRETTY_PRINT));
-        
+    // 1. Run the Master Pipeline script
+    $baseDir = dirname(__DIR__, 2); // Go up from web/api to root
+    $scriptPath = $baseDir . '/scripts/process_all.py';
+
+    // Ensure we run from the base directory so relative paths in Python work
+    // Windows command chaining
+    $cmd = "cd /d " . escapeshellarg($baseDir) . " && python " . escapeshellarg($scriptPath);
+
+    // Execute
+    $output = shell_exec($cmd . " 2>&1");
+
+    // Check if json file exists
+    $jsonFile = $baseDir . '/logs/unified_timeline.json';
+
+    if (file_exists($jsonFile)) {
+        // Read to count events
+        $data = json_decode(file_get_contents($jsonFile), true);
         echo json_encode([
             'success' => true,
-            'total_events' => count($result['events']),
-            'audit_log' => $result['audit_log'],
-            'retention_notice' => $result['retention_notice'],
-            'saved_to' => basename($outputFile)
+            'total_events' => count($data),
+            'audit_log' => ['Extraction successful', $output],
+            'retention_notice' => 'Timeline extracted successfully.'
         ]);
-        
-    } catch (Exception $e) {
-        // Check if error is due to missing extraction data
-        if (strpos($e->getMessage(), 'No timeline session directory') !== false) {
-            echo json_encode([
-                'success' => false,
-                'error' => 'No timeline data found',
-                'instructions' => [
-                    'You must first collect logs from your Android device.',
-                    'Steps:',
-                    '1. Connect your device via ADB',
-                    '2. Run: python scripts/extract_timeline_logs.py',
-                    '3. Wait for extraction to complete',
-                    '4. Click "Extract Timeline" again'
-                ],
-                'technical_error' => $e->getMessage()
-            ]);
-        } else {
-            echo json_encode([
-                'success' => false,
-                'error' => $e->getMessage(),
-                'trace' => DEBUG_MODE ? $e->getTraceAsString() : null
-            ]);
-        }
-    }
-}
-
-/**
- * Get timeline events with filtering
- */
-function getEvents()
-{
-    $logsPath = getLogsPath();
-    $timelineFile = $logsPath . '/forensic_timeline.json';
-    
-    if (!file_exists($timelineFile)) {
-        echo json_encode([
-            'success' => true,
-            'total_events' => 0,
-            'events' => [],
-            'retention_notice' => 'No timeline data extracted yet. Click "Extract Timeline" to begin.'
-        ]);
-        return;
-    }
-    
-    $data = json_decode(file_get_contents($timelineFile), true);
-    
-    // Apply filters
-    $category = $_GET['category'] ?? null;
-    $start_time = $_GET['start_time'] ?? null;
-    $end_time = $_GET['end_time'] ?? null;
-    
-    $events = $data['events'] ?? [];
-    
-    if ($category) {
-        $events = array_filter($events, function($e) use ($category) {
-            return $e['category'] === $category;
-        });
-    }
-    
-    if ($start_time) {
-        $start_unix = strtotime($start_time);
-        $events = array_filter($events, function($e) use ($start_unix) {
-            return $e['timestamp_unix'] >= $start_unix;
-        });
-    }
-    
-    if ($end_time) {
-        $end_unix = strtotime($end_time);
-        $events = array_filter($events, function($e) use ($end_unix) {
-            return $e['timestamp_unix'] <= $end_unix;
-        });
-    }
-    
-    $events = array_values($events); // Re-index
-    
-    // Calculate stats
-    $category_breakdown = [];
-    foreach ($events as $event) {
-        $cat = $event['category'];
-        $category_breakdown[$cat] = ($category_breakdown[$cat] ?? 0) + 1;
-    }
-    
-    // Time range
-    $time_range = [
-        'start' => !empty($events) ? $events[0]['timestamp_utc'] : null,
-        'end' => !empty($events) ? end($events)['timestamp_utc'] : null
-    ];
-    
-    echo json_encode([
-        'success' => true,
-        'total_events' => count($events),
-        'category_breakdown' => $category_breakdown,
-        'time_range' => $time_range,
-        'events' => $events,
-        'extracted_at' => $data['extracted_at'] ?? null,
-        'retention_notice' => $data['retention_notice'] ?? 'Timeline limited by logcat buffer retention'
-    ]);
-}
-
-/**
- * Get event statistics
- */
-function getStats()
-{
-    $logsPath = getLogsPath();
-    $timelineFile = $logsPath . '/forensic_timeline.json';
-    
-    if (!file_exists($timelineFile)) {
-        echo json_encode([
-            'success' => true,
-            'total_events' => 0,
-            'category_breakdown' => []
-        ]);
-        return;
-    }
-    
-    $data = json_decode(file_get_contents($timelineFile), true);
-    $events = $data['events'] ?? [];
-    
-    $stats = [
-        'total_events' => count($events),
-        'category_breakdown' => [],
-        'event_type_breakdown' => []
-    ];
-    
-    foreach ($events as $event) {
-        $cat = $event['category'];
-        $type = $event['event_type'];
-        
-        $stats['category_breakdown'][$cat] = ($stats['category_breakdown'][$cat] ?? 0) + 1;
-        $stats['event_type_breakdown'][$type] = ($stats['event_type_breakdown'][$type] ?? 0) + 1;
-    }
-    
-    echo json_encode(array_merge(['success' => true], $stats));
-}
-
-/**
- * Get forensic audit trail
- */
-function getAudit()
-{
-    $logsPath = getLogsPath();
-    $timelineFile = $logsPath . '/forensic_timeline.json';
-    
-    if (!file_exists($timelineFile)) {
+    } else {
         echo json_encode([
             'success' => false,
-            'error' => 'No timeline data available'
+            'error' => 'Extraction failed. Python script did not generate output.',
+            'debug_info' => [
+                'cwd' => getcwd(),
+                'base_dir' => $baseDir,
+                'cmd' => $cmd,
+                'output' => $output
+            ]
+        ]);
+    }
+}
+
+function getEvents()
+{
+    $baseDir = dirname(__DIR__, 2);
+    $jsonFile = $baseDir . '/logs/unified_timeline.json';
+
+    if (!file_exists($jsonFile)) {
+        echo json_encode([
+            'success' => true,
+            'events' => [],
+            'retention_notice' => 'No data found. Please click Extract.'
         ]);
         return;
     }
-    
-    $data = json_decode(file_get_contents($timelineFile), true);
-    
+
+    $rawData = json_decode(file_get_contents($jsonFile), true);
+
+    // Transform Data to match TimelineViewer.js expectations
+    // Input: { timestamp, type, subtype, content, severity }
+    // Output: { category, event_type, timestamp_utc, timestamp_local, timestamp_unix, source, confidence, raw_reference }
+
+    $transformedEvents = [];
+
+    foreach ($rawData as $idx => $ev) {
+        // Map Category
+        $cat = 'DEVICE'; // Default
+        if ($ev['type'] === 'SMS' || $ev['type'] === 'CALL') {
+            $cat = 'APP'; // Map Comm to App for now as per legacy filters
+        } elseif (strpos($ev['type'], 'LOGCAT_NET') !== false) {
+            $cat = 'NETWORK';
+        } elseif (strpos($ev['type'], 'LOGCAT_APP') !== false) {
+            $cat = 'APP';
+        } elseif ($ev['type'] === 'LOGCAT_POWER') {
+            $cat = 'POWER';
+        } elseif ($ev['type'] === 'LOGCAT_DEVICE') {
+            $cat = 'DEVICE';
+        } elseif ($ev['type'] === 'LOGCAT_SYS') {
+            $cat = 'DEVICE';
+        } elseif ($ev['type'] === 'NOTIFICATION') {
+            $cat = 'NOTIFICATION';
+        } elseif ($ev['type'] === 'FINANCIAL') {
+            $cat = 'FINANCIAL';
+        } elseif ($ev['type'] === 'SECURITY') {
+            $cat = 'SECURITY';
+        }
+
+        // Timestamps
+        $ts = $ev['timestamp']; // ISO8601
+        $unix = strtotime($ts);
+
+        $transformedEvents[] = [
+            'id' => $idx,
+            'category' => $cat,
+            'event_type' => $ev['subtype'] ?? $ev['type'],
+            'timestamp_utc' => $ts,
+            'timestamp_local' => $ts, // Assuming already local from script or just reusing
+            'timestamp_unix' => $unix,
+            'source' => $ev['type'],
+            'event_nature' => 'LOG',
+            'confidence' => 'High',
+            'raw_reference' => $ev['content'],
+            'metadata' => [
+                'content' => $ev['content'],
+                'severity' => $ev['severity']
+            ]
+        ];
+    }
+
+    // Calc stats
+    $breakdown = [
+        'DEVICE' => 0,
+        'APP' => 0,
+        'NETWORK' => 0,
+        'POWER' => 0,
+        'NOTIFICATION' => 0,
+        'FINANCIAL' => 0,
+        'SECURITY' => 0
+    ];
+
+    $debug_counts = [];
+
+    foreach ($transformedEvents as $e) {
+        $c = $e['category'];
+        if (!isset($debug_counts[$c])) {
+            $debug_counts[$c] = 0;
+        }
+        $debug_counts[$c]++;
+
+        if (isset($breakdown[$c])) {
+            $breakdown[$c]++;
+        }
+    }
+
     echo json_encode([
         'success' => true,
-        'audit_log' => $data['audit_log'] ?? [],
-        'metadata' => $data['metadata'] ?? [],
-        'retention_notice' => $data['retention_notice'] ?? null
+        'events' => $transformedEvents,
+        'category_breakdown' => $breakdown,
+        'debug_counts' => $debug_counts, // DIAGNOSTIC
+        'retention_notice' => 'Data loaded from unified timeline.'
     ]);
 }
+?>

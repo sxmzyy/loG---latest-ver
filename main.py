@@ -15,7 +15,7 @@ from log_monitor import start_monitoring, stop_monitoring
 from graphing import plot_graph, plot_frequent_callers, export_chart, export_graph_data
 from filtering import filter_logs, load_filtered_logs, save_filtered_logs
 from reporting import export_full_report
-from scripts.android_logs import get_logcat, get_call_logs, get_sms_logs, get_location_logs
+from scripts.android_logs import get_logcat, get_call_logs, get_sms_logs, get_location_logs, get_contacts
 
 # Initialize log queue
 log_queue = queue.Queue()
@@ -112,6 +112,85 @@ def extract_logs():
     get_call_logs()
     get_sms_logs()
     get_location_logs()
+    get_contacts()  # Extract contact names
+    
+    # Enhanced forensic data extraction
+    widgets["output_text"].insert(tk.END, "\n🔬 Enhanced Forensic Data Collection...\n")
+    widgets["output_text"].see(tk.END)
+    try:
+        from scripts.enhanced_extraction import (
+            get_usage_stats, get_recent_tasks, get_wifi_networks,
+            get_bluetooth_devices, get_battery_history, get_network_stats,
+            get_notification_history, get_device_identifiers, get_dual_space_apps
+        )
+        
+        get_usage_stats()
+        get_recent_tasks()
+        get_wifi_networks()
+        get_bluetooth_devices()
+        get_battery_history()
+        get_network_stats()
+        
+        # 🆕 Android 13/14 Advanced Forensics
+        widgets["output_text"].insert(tk.END, "\n🆕 Android 13/14 Advanced Forensics...\n")
+        widgets["output_text"].see(tk.END)
+        get_notification_history()
+        get_device_identifiers()
+        get_dual_space_apps()
+        
+        widgets["output_text"].insert(tk.END, "✅ Enhanced data collection complete\n")
+    except Exception as e:
+        widgets["output_text"].insert(tk.END, f"⚠️ Enhanced extraction error: {str(e)}\n")
+    widgets["output_text"].see(tk.END)
+    
+    # Run all analyzers
+    widgets["output_text"].insert(tk.END, "\n📊 Running Forensic Analyzers...\n")
+    widgets["output_text"].see(tk.END)
+    
+    try:
+        # Privacy Profiler
+        from analysis.privacy_analyzer import analyze_privacy
+        analyze_privacy()
+        widgets["output_text"].insert(tk.END, "   ✅ Privacy profiler complete\n")
+    except Exception as e:
+        widgets["output_text"].insert(tk.END, f"   ⚠️ Privacy profiler error: {e}\n")
+    
+    try:
+        # Notification Parser
+        from analysis.notification_parser import save_notification_timeline
+        save_notification_timeline()
+        widgets["output_text"].insert(tk.END, "   ✅ Notification parser complete\n")
+    except Exception as e:
+        widgets["output_text"].insert(tk.END, f"   ⚠️ Notification parser error: {e}\n")
+    
+    try:
+        # Dual Space Analyzer
+        from analysis.dual_space_analyzer import analyze_dual_space
+        analyze_dual_space()
+        widgets["output_text"].insert(tk.END, "   ✅ Dual space analyzer complete\n")
+    except Exception as e:
+        widgets["output_text"].insert(tk.END, f"   ⚠️ Dual space analyzer error: {e}\n")
+    
+    try:
+        # Device Identifiers & Section 65B
+        from analysis.device_identifiers import generate_section_65b_data
+        generate_section_65b_data()
+        widgets["output_text"].insert(tk.END, "   ✅ Section 65B data generated\n")
+    except Exception as e:
+        widgets["output_text"].insert(tk.END, f"   ⚠️ Section 65B generation error: {e}\n")
+    
+    widgets["output_text"].see(tk.END)
+    
+    # Parse contacts to create name mapping
+    import sys
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'analysis'))
+    try:
+        from parse_contacts import parse_contacts
+        parse_contacts()
+        widgets["output_text"].insert(tk.END, "   ✅ Contact names mapped\n")
+    except Exception as e:
+        widgets["output_text"].insert(tk.END, f"   ⚠️ Contact parsing failed: {e}\n")
+    widgets["output_text"].see(tk.END)
     
     # Reload logcat logs into "Logcat Logs" tab
     with open("logs/android_logcat.txt", "r", encoding="utf-8") as f:

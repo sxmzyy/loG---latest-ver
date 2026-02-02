@@ -79,6 +79,30 @@ try {
         }
     }
 
+    // Post-Processing: Generate Unified Timeline for Map
+    $rootPath = dirname(BASE_PATH);
+    $cmd = "cd \"$rootPath\" && python analysis/unified_timeline.py 2>&1";
+    $output = [];
+    exec($cmd, $output, $returnCode);
+
+    if ($returnCode !== 0) {
+        // Log warning but don't fail the whole request
+        $response['message'] .= " (Timeline generation failed: " . implode(" ", $output) . ")";
+    } else {
+        $stats['timeline_events'] = "Generated";
+    }
+
+    // Post-Processing: Generate Social Graph
+    $cmd = "cd \"$rootPath\" && python analysis/social_graph.py 2>&1";
+    $output = [];
+    exec($cmd, $output, $returnCode);
+
+    if ($returnCode !== 0) {
+        $response['message'] .= " (Social graph generation failed: " . implode(" ", $output) . ")";
+    } else {
+        $stats['social_graph'] = "Generated";
+    }
+
     $response['success'] = true;
     $response['message'] = 'Logs extracted successfully!';
     $response['stats'] = $stats;

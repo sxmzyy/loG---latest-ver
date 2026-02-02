@@ -33,64 +33,46 @@ if (!is_dir($exportPath)) {
 }
 
 try {
-    $timestamp = date('Y-m-d_H-i-s');
-    $filename = "forensic_report_{$timestamp}";
+    // Call Python reporting script
+    $pythonPath = PYTHON_PATH;
 
-    // Collect data
-    $data = [
-        'generated' => date('Y-m-d H:i:s'),
-        'device' => 'Android Device',
-        'sections' => []
-    ];
+    // Execute Python script to generate report
+    // Change directory to root so imports work
+    $rootDir = dirname(dirname(__DIR__));
+    $command = "cd /d \"$rootDir\" && $pythonPath -c \"from reporting import export_full_report; export_full_report()\" 2>&1";
+    $output = [];
+    $returnCode = 0;
 
-    // SMS Data
-    if ($includeSms && file_exists($logsPath . '/sms_logs.txt')) {
-        $content = file_get_contents($logsPath . '/sms_logs.txt');
-        $data['sections']['sms'] = [
-            'title' => 'SMS Messages',
-            'count' => substr_count($content, 'Row:'),
-            'sample' => substr($content, 0, 2000)
-        ];
+    exec($command, $output, $returnCode);
+
+    if ($returnCode !== 0) {
+        throw new Exception("Python script failed: " . implode("\n", $output));
     }
 
-    // Call Data
-    if ($includeCalls && file_exists($logsPath . '/call_logs.txt')) {
-        $content = file_get_contents($logsPath . '/call_logs.txt');
-        $data['sections']['calls'] = [
-            'title' => 'Call Logs',
-            'count' => substr_count($content, 'Row:'),
-            'sample' => substr($content, 0, 2000)
-        ];
+    // Find the most recent report file
+    $exportPath = dirname($logsPath) . '/exports';
+    if (!is_dir($exportPath)) {
+        throw new Exception("Exports directory not found");
     }
 
-    // Location Data
-    if ($includeLocation && file_exists($logsPath . '/location_logs.txt')) {
-        $content = file_get_contents($logsPath . '/location_logs.txt');
-        $data['sections']['location'] = [
-            'title' => 'Location Data',
-            'count' => substr_count($content, 'Location['),
-            'sample' => substr($content, 0, 2000)
-        ];
+    $files = glob($exportPath . '/forensic_report_*.html');
+    if (empty($files)) {
+        throw new Exception("No report file generated");
     }
 
-    // Logcat Data
-    if ($includeLogcat && file_exists($logsPath . '/android_logcat.txt')) {
-        $lines = file($logsPath . '/android_logcat.txt');
-        $data['sections']['logcat'] = [
-            'title' => 'System Logs (Logcat)',
-            'count' => count($lines),
-            'sample' => implode("\n", array_slice($lines, 0, 100))
-        ];
-    }
+    // Get the most recent file
+    usort($files, function ($a, $b) {
+        return filemtime($b) - filemtime($a);
+    });
 
-    // Generate HTML Report
-    $html = generateHtmlReport($data);
-    $htmlFile = $exportPath . "/{$filename}.html";
-    file_put_contents($htmlFile, $html);
+    $latestFile = $files[0];
+    $filename = basename($latestFile);
 
     $response['success'] = true;
-    $response['filename'] = "{$filename}.html";
-    $response['downloadUrl'] = "exports/{$filename}.html";
+    $response['filename'] = $filename;
+    $response['downloadUrl'] = "../exports/" . $filename;
+    $response['message'] = "Forensic report generated successfully!";
+    $response['output'] = implode("\n", $output);
 
 } catch (Exception $e) {
     $response['error'] = $e->getMessage();

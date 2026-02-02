@@ -40,41 +40,55 @@ $logFiles = [
     'device_info.txt',
     'battery_logs.txt',
     'network_logs.txt',
-    'storage_logs.txt'
+    'storage_logs.txt',
+    'unified_timeline.json',
+    'notification_history.txt',
+    'notification_timeline.json',
+    'usage_stats.txt',
+    'package_dump.txt',
+    'dual_space_analysis.json'
 ];
 
 try {
+    // 1. Delete explicit files
     foreach ($logFiles as $file) {
         $filePath = $logsPath . '/' . $file;
         if (file_exists($filePath)) {
-            if (unlink($filePath)) {
+            // Suppress warnings with @ in case of locks, check result
+            if (@unlink($filePath)) {
                 $result['filesDeleted']++;
             } else {
-                $result['errors'][] = "Failed to delete: $file";
+                $result['errors'][] = "Failed to delete (locked?): $file";
             }
         }
     }
 
-    // Also try to clear any other .txt files in the logs directory
+    // 2. Clear pattern matches (txt, json)
     if (is_dir($logsPath)) {
-        $files = glob($logsPath . '/*.txt');
-        foreach ($files as $file) {
-            if (unlink($file)) {
-                $result['filesDeleted']++;
-            }
-        }
-
-        // Clear any .json files as well
-        $jsonFiles = glob($logsPath . '/*.json');
-        foreach ($jsonFiles as $file) {
-            if (unlink($file)) {
-                $result['filesDeleted']++;
+        $patterns = ['*.txt', '*.json', '*.log'];
+        foreach ($patterns as $pattern) {
+            $files = glob($logsPath . '/' . $pattern);
+            if ($files) {
+                foreach ($files as $file) {
+                    $basename = basename($file);
+                    if (!in_array($basename, ['README.txt', 'README.json', '.gitkeep'])) {
+                        if (file_exists($file)) {
+                            if (@unlink($file)) {
+                                $result['filesDeleted']++;
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
     if (!empty($result['errors'])) {
-        $result['success'] = false;
+        // partial success is still success-ish, but let's warn
+        // If we deleted nothing and had errors, then false
+        if ($result['filesDeleted'] === 0 && count($result['errors']) > 0) {
+            $result['success'] = false;
+        }
     }
 
     $result['message'] = $result['filesDeleted'] > 0
