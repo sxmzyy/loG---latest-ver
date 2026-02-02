@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Android Forensic Report</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #1e3c72, #2a5298); color: white; padding: 40px; text-align: center; margin-bottom: 30px; border-radius: 10px; }
+        .header h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .header p { opacity: 0.9; }
+        .section { background: white; border-radius: 10px; padding: 25px; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section h2 { color: #1e3c72; border-bottom: 2px solid #2a5298; padding-bottom: 10px; margin-bottom: 20px; }
+        .stat-box { display: inline-block; background: #f0f4f8; padding: 15px 25px; border-radius: 8px; margin-right: 15px; margin-bottom: 10px; }
+        .stat-box .value { font-size: 2rem; font-weight: bold; color: #1e3c72; }
+        .stat-box .label { font-size: 0.9rem; color: #666; }
+        .log-preview { background: #0d1117; color: #c9d1d9; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 0.85rem; overflow-x: auto; max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 0.9rem; }
+        @media print { body { background: white; } .section { box-shadow: none; border: 1px solid #ddd; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 Android Forensic Report</h1>
+            <p>Generated: 2026-01-22 10:51:33</p>
+        </div>        <div class="section">
+            <h2>SMS Messages</h2>
+            <div class="stat-box">
+                <div class="value">2991</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">Row: 0 _id=3593, thread_id=1317, address=JX-PPINST-S, person=NULL, date=1769060712938, date_sent=1769060713000, protocol=0, read=0, status=-1, type=1, reply_path_present=0, subject=proto:CjoKImNvbS5nb29nbGUuYW5kcm9pZC5hcHBzLm1lc3NhZ2luZy4SFCIAKhDXQe9DA9RMAL3/RATW8rxY, body=256897 is your PrepInsta Login OTP. Follow us on Instagram to get offcampus updates. Team PrepInsta, service_center=+917019075011, locked=0, sub_id=1, error_code=-1, creator=com.google.android.apps.messaging, seen=1, priority=-1
+Row: 1 _id=3592, thread_id=867, address=JT-JIOVOC-S, person=NULL, date=1769060641104, date_sent=1769060641000, protocol=0, read=0, status=-1, type=1, reply_path_present=0, subject=proto:CjoKImNvbS5nb29nbGUuYW5kcm9pZC5hcHBzLm1lc3NhZ2luZy4SFCIAKhB/MhU/SEZND64CkBxuy7/5, body=உங்களின் கருத்து எங்களுக்கு முக்கியமானது
+Jio மொபைல் சேவை அனுபவத்தைப் பற்றிய உங்கள் மதிப்புமிக்க கருத்தைப் பகிர்ந்து கொள்ள 30 வினாடிகள் ஒதுக்குங்கள்
+www.jio.com/r/CLt0LWWKO, service_center=+919014300414, locked=0, sub_id=1, error_code=-1, creator=com.google.android.apps.messaging, seen=1, priority=-1
+Row: 2 _id=3591, thread_id=1316, address=VM-FNCHRO-P, person=NULL, date=1769059787964, date_sent=1769059787000, protocol=0, read=0, status=-1, type=1, reply_path_present=0, subject=proto:CjoKImNvbS5nb29nbGUuYW5kcm9pZC5hcHBzLm1lc3NhZ2luZy4SFCIAKhDeWRLLjCZAPI/JbRduoIrT, body=Rs. 60,000* loan Will be credited to your Bank A/c on 22.01.2026. Use OTP 2381 to Apply for loan http://pu1.in/FNCHRO/gkhVVT -Finance Hero, service_center=+917012075009, locked=0, sub_id=1, error_code=-1, creator=com.google.android.apps.messaging, seen=1, priority=-1
+Row: 3 _id=3590, thread_id=1315, address=BH-CKYCR-S, person=NULL, date=1769055271887, date_sent=1769055270000, protocol=0, read=0</div>
+        </div>        <div class="section">
+            <h2>Call Logs</h2>
+            <div class="stat-box">
+                <div class="value">147</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">Row: 0 formatted_number=NULL, duration=53, subject=, is_call_log_phone_account_migration_pending=0, subscription_id=1, photo_id=0, post_dial_digits=, call_screening_app_name=NULL, priority=-1, number=+916382372387, countryiso=IN, photo_uri=NULL, geocoded_location=India, missed_reason=0, is_business_call=0, block_reason=0, subscription_component_name=com.android.phone/com.android.services.telephony.TelephonyConnectionService, add_for_all_users=1, numbertype=NULL, features=68, transcription=NULL, last_modified=1768411282836, _id=15045, new=1, date=1768411227699, name=BEN, type=1, presentation=1, via_number=, numberlabel=NULL, normalized_number=+916382372387, composer_photo_uri=NULL, phone_account_address=919344458459, phone_account_hidden=0, lookup_uri=NULL, voicemail_uri=NULL, matched_number=NULL, transcription_state=0, data_usage=NULL, location=NULL, asserted_display_name=NULL, call_screening_component_name=NULL, is_read=NULL
+Row: 1 formatted_number=NULL, duration=14, subject=, is_call_log_phone_account_migration_pending=0, subscription_id=1, photo_id=0, post_dial_digits=, call_screening_app_name=NULL, priority=-1, number=+916382372387, countryiso=IN, photo_uri=NULL, geocoded_location=India, missed_reason=0, is_business_call=0, block_reason=0, subscription_component_name=com.android.phone/com.android.services.telephony.TelephonyConnectionService, add_for_all_users=1, numbertype=NULL, features=68, transcription=NULL, last_modified=1768414988277, _id=15046, new=1, date=1768414965068, name=BEN, type=1, presentation=1, via_number=, numberlabel=NULL, normalized_number=+916382372387, composer_photo_uri=NULL, phone_account_address=919344458459, phone_account_hidden=0, lookup_uri=NULL, voicemail_uri=NULL, matched_number=NULL, transcription_state=0, data_usage=NULL, location=NULL, asserted_display_name=NULL, call_screening_component_name=NULL, is_read=NULL
+Row: 2 formatted_number=NULL, duration=9, subject=NULL, is_call_log_phone_account_migration_pending=0, subscription_id=1</div>
+        </div>        <div class="section">
+            <h2>Location Data</h2>
+            <div class="stat-box">
+                <div class="value">0</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">Location Manager State:
+  User Info:
+    current users: u[0, 10]
+  Location Settings:
+    Location Setting: false
+    Location Allow/Deny Packages:
+    Throttling Allow Packages:
+      com.google.android.gms
+    Emergency Bypass Allow Packages:
+      com.google.android.dialer[*]
+      com.google.android.gms[.thunderbird]
+  Location Controller Extra Package: com.google.android.gms.location.history [enabled]
+  Location Providers:
+    passive provider:
+      service: unregistered
+      listeners:
+        1000/android[SensorNotificationService]/09326EEB Request[PASSIVE, minUpdateInterval=+30m0s0ms, minUpdateDistance=100000.0, WorkSource{1000 android}] (inactive)
+      last location=
+      enabled=false
+      allowed=true
+      identity=1000/android[LocationService]
+      properties=ProviderProperties[powerUsage=Low, accuracy=Fine]
+    network provider:
+      service: ProviderRequest[OFF]
+      listeners:
+        10121/com.google.android.as/9D137D7E {na} (COARSE) Request[@+6h0m0s0ms LOW_POWER, minUpdateDistance=100000.0, WorkSource{10121 com.google.android.as}] (inactive)
+        1000/android[GnssService]/918A9F9F Request[PASSIVE, minUpdateInterval=0, hiddenFromAppOps, WorkSource{1000 android}] (inactive)
+      last location=
+      enabled=false
+      allowed=true
+      identity=10135/com.google.android.gms[network_location_provider]
+      extra attribution tags={awareness_provider, activity_recognition_provider, network_location_provider, gnss_location_provider, network_location_calibration, current_semantic_location, fused_location_provider, wearable_flp_shim, geofencer_provider}
+      properties=ProviderProperties[powerUsage=Medium, accuracy=Fine, requires=network, supports=[altitude]]
+      target service=10135/com.google.android.gms/com.google.android.location.network.NetworkLocationService@2
+      connected=true
+    fused provider:
+      service: ProviderRequest[OFF]
+      last location=
+      enabled=false
+      allowed=true
+      identity=10135/com.google.android</div>
+        </div>        <div class="section">
+            <h2>System Logs (Logcat)</h2>
+            <div class="stat-box">
+                <div class="value">24278</div>
+                <div class="label">Total Records</div>
+            </div>
+            <h4 style="margin-top: 20px; margin-bottom: 10px;">Sample Data:</h4>
+            <div class="log-preview">--------- beginning of crash
+
+01-09 13:35:32.640 F/libc    (  573): Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 573 (init), pid 573 (init)
+
+01-09 13:35:32.729 F/libc    (  573): Crash due to signal: crash_dump helper failed to exec, or was killed
+
+01-19 13:00:19.170 F/libc    ( 4232): Fatal signal 6 (SIGABRT), code -1 (SI_QUEUE) in tid 4232 (init), pid 4232 (init)
+
+01-19 13:00:19.199 F/libc    ( 4232): Crash due to signal: crash_dump helper failed to exec, or was killed
+
+--------- beginning of kernel
+
+01-22 15:27:20.504 D/tfa98xx_hw_params()( 5509): Requested rate: 48000, sample size: 32, physical size: 32
+
+01-22 15:27:20.504 D/tfa98xx_hw_params()( 5509): tfa98xx_hw_params: Requested width: 32
+
+01-22 15:27:20.504 D/tfa98xx_hw_params()( 5509): mixer profile:container profile = [0:0]
+
+01-22 15:27:20.504 D/tfa98xx_hw_params()( 5509): Requested rate: 48000, sample size: 32, physical size: 32
+
+01-22 15:27:20.504 D/tfa98xx_hw_params()( 5509): tfa98xx_hw_params: Requested width: 32
+
+01-22 15:27:20.504 D/tfa98xx_hw_params()( 5509): mixer profile:container profile = [0:0]
+
+01-22 15:27:20.531 D/tfa98xx 2-0034(14840): tfa98xx_mute: state: 0, stream : 0
+
+01-22 15:27:20.532 I/tfa98xx_adsp_send_calib_values()(14840): Device 0x35 cal value is 0x401211,value:6122
+
+01-22 15:27:20.533 I/tfa98xx_adsp_send_calib_values()(14840): Device 0x34 cal value is 0x381222,value:5817
+
+01-22 15:27:20.533 I/tfa98xx_adsp_send_calib_values()(14840): tfa98xx_device_count=2  bytes[0]=2
+
+01-22 15:27:20.533 I/tfa98xx_adsp_send_calib_values()(14840): calibration value send to host DSP.
+
+01-22 15:27:20.548 D/Active_profile(14840): speaker, next_profile:speaker
+
+01-22 15:27:20.548 D/        (14840): Startup of device [P] is a warmstart
+
+01-22 15:27:20.552 I/tfa98xx 2-0034(14840): tfa_dev_start success (0)
+
+01-22 15:27:20.552 D/tfa98xx 2-0035(14840): tfa98xx_mute: state: 0, stream : 0
+
+01-22 15:27:20.552 I/tfa98xx_adsp_send_calib_values()(14840): The calibration value was sent to host DSP.
+
+01-22 15:27:20.553 D/Active_profile(14840): speaker, next_profile:speaker
+
+01-22 15:27:20.553 D/        (14840): Startup of device [S] is a warmstart
+
+01-22 15:27:20.557 I/tfa98xx 2-0035(14840): tfa_dev_start success (0)
+
+01-22 15:27:20.560 D/tfa98xx 2-0034( 5509): tfa98xx_mute: state: 0, stream : 1
+
+01-22 15:27:20.560 D/tfa98xx 2-0035( 5509): tfa98xx_mute: state: 0, stream : 1
+
+01-22 15:27:21.014 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 532, y 410, w 64
+
+01-22 15:27:21.068 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:21.223 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 534, y 428, w 82
+
+01-22 15:27:21.315 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:21.475 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 559, y 422, w 93
+
+01-22 15:27:21.571 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:21.723 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 553, y 478, w 92
+
+01-22 15:27:21.794 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:21.921 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 555, y 473, w 94
+
+01-22 15:27:22.003 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:23.561 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 533, y 429, w 74
+
+01-22 15:27:23.657 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:23.796 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 528, y 457, w 80
+
+01-22 15:27:23.896 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:24.044 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 538, y 442, w 77
+
+01-22 15:27:24.127 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:24.287 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 563, y 450, w 81
+
+01-22 15:27:24.366 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:24.494 E/simulated_ntc( 4282): proc_shell_write write invalid para
+
+01-22 15:27:24.513 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 575, y 471, w 91
+
+01-22 15:27:24.630 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:24.765 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 590, y 450, w 93
+
+01-22 15:27:24.852 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:24.963 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 591, y 438, w 85
+
+01-22 15:27:25.050 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:25.376 I/(virq   (22612): irq_count)- GICv3:IPI(1):529175045 GICv3:arch_timer(11):274880172 GICv3:IPI(6):73491044 GICv3:IPI(2):33655668 GICv3:ufshcd(33):20767655 GICv3:ipcc_0(30):20737709 GICv3:gsi(36):19580090 GICv3:apps_rsc(24):17229124 GICv3:msm_drm(252):16686118 ipcc:glink-native-adsp(365):13051139
+
+01-22 15:27:25.376 I/(cpu    (22612): irq_count)- 0:215417896 1:210547989 2:213370939 3:210727282 4:84715060 5:64589398 6:67002069 7:17345088
+
+01-22 15:27:25.376 I/(ipi    (22612): irq_count)- 0:529175049 1:33655668 2:0 3:0 4:0 5:73491044 6:0
+
+01-22 15:27:25.961 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 560, y 413, w 71
+
+01-22 15:27:26.057 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:26.222 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 550, y 413, w 59
+
+01-22 15:27:26.300 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:26.481 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 551, y 416, w 63
+
+01-22 15:27:26.556 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:26.737 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 550, y 400, w 57
+
+01-22 15:27:26.795 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:26.980 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 555, y 387, w 59
+
+01-22 15:27:27.055 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:27.203 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 541, y 379, w 58
+
+01-22 15:27:27.286 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:27.392 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 535, y 411, w 70
+
+01-22 15:27:27.504 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:28.546 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 450, y 1791, w 43
+
+01-22 15:27:28.956 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:29.411 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 457, y 1667, w 41
+
+01-22 15:27:29.501 E/simulated_ntc( 4282): proc_shell_write write invalid para
+
+01-22 15:27:29.741 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:30.233 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 297, y 292, w 48
+
+01-22 15:27:30.307 I/        ( 1093): [GTP-INF][goodix_ts_report_finger] ACTION_UP
+
+01-22 15:27:30.770 I/[GTP-INF][goodix_ts_report_finger] ACTION_DOWN( 1093): 1, 1, id[0], x 182, y 239, w 29
+
+01-22 15:27:31.045 I/richtap_file_unlocked_ioctl( 4277): cmd=0x5205, arg=0x7f
+
+01-22 15:27:31.046 I/richtap_file_unlocked_ioctl( 4275): cmd=0x5205, arg=0x7f
+
+01-22 15:27:31.046 I/richtap_file_unlocked_ioctl( 4275): cmd=0x520a, arg=0x0
+
+01-22 15:27:31.046 I/[haptic_hv][0279]aw8692x_wait_enter_standby( 4275): entered standby!
+
+01-22 15:27:31.046 I/[haptic_hv][0423]aw8692x_upload_lra( 4275): write osc_cali_data to trim_lra = 0x00
+
+01-22 15:27:31.052 I/        (31866): richtap_rtp_work rtp 1837 tm_len = 408
+
+01-22 15:27:31.052 I/[haptic_hv][0344]aw8692x_play_mode(31866): enter rtp mode
+
+01-22 15:27:31.053 I/[haptic_hv][0293]aw8692x_bst_mode_config(31866): haptic bst mode = bst
+
+01-22 15:27:31.054 I/[haptic_hv][0260]aw8692x_play_go(31866): enter, flag = 1
+
+01-22 15:27:31.054 I/richtap_rtp_start(31866): wait for RTP_GO, glb_state=0x01
+
+01-22 15:27:31.060 I/richtap_rtp_start(31866): RTP_GO! glb_state=0x08
+
+01-22 15:27:31.060 I/        (31866): richtap_rtp_work start richtap play
+
+01-22 15:27:31.548 W/healthd ( 1390): time_last:221, soc_current_time=189018, soc_pre_time=188797,charging_status:0,soc_temp:88
+
+01-22 15:27:31.548 W/healthd ( 1390): battery l=88 v=4180 t=34.0 h=2 st=3 c=-968000 fc=3899000 cc=1103 chg=
+
+01-22 15:27:31.556 W/healthd ( 1390): time_last:221, soc_current_time=189018, soc_pre_time=188797,charging_status:0,soc_temp:88
+
+01-22 15:27:31.560 W/HealthLoop( 1390): debug.nt.screen_brightness:6.190517
+
+01-22 15:27:33.064 I/adsp_sleepmon( 1474): Audio: num_sessions=0,num_lpi_sessions=0,timer_pending=1
+
+01-22 15:27:33.067 D/tfa98xx 2-0034( 5509): tfa98xx_mute: state: 1, stream : 1
+
+01-22 15:27:33.067 D/tfa98xx 2-0035( 5509): tfa98xx_mute: state: 1, stream : 1
+
+01-22 15:27:33.067 I/waipio-asoc-snd soc( 5509): spf_core_platform:sound: check_userspace_service_state: pcm_id 19 state 0
+
+01-22 15:27:33.071 D/tfa98xx 2-0034( 5509): tfa98xx_mute: state: 1, stream : 0
+
+01-22 15:27:33.072 D/tfa98xx 2-0035( 5509): tfa98xx_mute: state: 1, stream : 0
+
+01-22 15:27:33.073 I/waipio-asoc-snd soc( 5509): spf_core_platform:sound: check_userspace_service_state: pcm_id 18 state 0
+</div>
+        </div>        <div class="footer">
+            <p>This report was generated by Android Forensic Tool</p>
+            <p>© 2024 - For authorized forensic use only</p>
+        </div>
+    </div>
+</body>
+</html>
