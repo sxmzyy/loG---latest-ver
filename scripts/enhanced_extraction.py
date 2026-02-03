@@ -5,6 +5,11 @@ Adds dumpsys commands for App Sessionizer, Beacon Map, and Power Forensics
 
 import subprocess
 import os
+import sys
+
+# Force UTF-8 encoding for stdout to prevent Windows cp1252 errors
+if sys.platform == "win32" and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 def get_usage_stats():
     """
@@ -255,6 +260,28 @@ def get_dual_space_apps():
     except Exception as e:
         print(f"⚠️ Failed to detect dual space apps: {e}")
 
+def get_all_packages_with_uids():
+    """
+    🆕 Extract ALL packages with UIDs to detect hidden clones
+    This bypasses issues where 'pm list packages --user 999' returns empty.
+    """
+    try:
+        print("📦 Extracting full package list with UIDs...")
+        result = subprocess.run(
+            ["adb", "shell", "pm", "list", "packages", "-f", "-U"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            check=True,
+            timeout=20
+        )
+        with open("logs/full_package_dump.txt", "w", encoding="utf-8") as f:
+            f.write(result.stdout)
+        print("✅ Full package list extracted")
+    except Exception as e:
+        print(f"⚠️ Failed to extract full package list: {e}")
+
 def get_detailed_system_dump():
     """
     EXTREME EXTRACTION: Pulls deep system state
@@ -335,6 +362,7 @@ def extract_all_enhanced_data():
     get_notification_history()  # UPI/OTP Correlator
     get_device_identifiers()    # Section 65B Certificate
     get_dual_space_apps()       # Mule Account Scanner
+    get_all_packages_with_uids() # 🆕 Full Package Dump (The Fix)
     
     # 🔥 PULL EVERYTHING (Deep Dump)
     get_detailed_system_dump()

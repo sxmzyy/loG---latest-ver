@@ -113,6 +113,8 @@ function getEvents()
             $cat = 'FINANCIAL';
         } elseif ($ev['type'] === 'SECURITY') {
             $cat = 'SECURITY';
+        } elseif ($ev['type'] === 'GHOST') {
+            $cat = 'GHOST';
         }
 
         // Timestamps
@@ -145,7 +147,8 @@ function getEvents()
         'POWER' => 0,
         'NOTIFICATION' => 0,
         'FINANCIAL' => 0,
-        'SECURITY' => 0
+        'SECURITY' => 0,
+        'GHOST' => 0
     ];
 
     $debug_counts = [];

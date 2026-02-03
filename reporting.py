@@ -24,21 +24,56 @@ except (ImportError, OSError) as e:
     print(f"⚠️  WeasyPrint not available: {e}")
     print("   PDF export will be disabled. HTML export will still work.")
 
-def get_todays_logs(log_lines):
-    """Filters log entries to include only those from the current day."""
-    today_str = datetime.now().strftime("%m-%d")
-    todays_logs = []
-    for line in log_lines:
-        # Check if the line starts with the month-day format (e.g., "08-26")
-        if line.strip().startswith(today_str):
-            todays_logs.append(line)
-    return todays_logs
-
 def _load_lines(path):
     if not os.path.exists(path):
         return []
-    with open(path, "r", encoding="utf-8", errors="replace") as f:
-        return f.readlines()
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            return f.readlines()
+    except Exception:
+        return []
+
+
+
+def _parse_system_properties():
+    """Parses the system_properties.txt file into a dictionary."""
+    props = {}
+    path = "logs/system_properties.txt"
+    if not os.path.exists(path):
+        return props
+    
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            for line in f:
+                # Format: [key]: [value]
+                # Regex matches [anything]: [anything]
+                match = re.match(r'^\[(.*?)]: \[(.*?)\]$', line.strip())
+                if match:
+                    props[match.group(1)] = match.group(2)
+    except Exception as e:
+        print(f"Warning: Error parsing system properties: {e}")
+        
+    return props
+
+def _get_kernel_version_safe():
+    """Attempts to get kernel version from first 200 lines of logcat without loading full file."""
+    path = "logs/android_logcat.txt"
+    if not os.path.exists(path):
+        return "Unknown"
+        
+    try:
+        with open(path, 'r', encoding='utf-8', errors='replace') as f:
+            for i, line in enumerate(f):
+                if i > 200: # detailed kernel info usually at top
+                    break
+                # Linux version 4.19.157-perf+ (build_user@build_host) ...
+                if "Linux version" in line:
+                    match = re.search(r'Linux\s+version\s+([^\s]+)', line)
+                    if match:
+                        return match.group(1)
+    except Exception:
+        pass
+    return "Unknown"
 
 def _summarize_calls():
     lines = _load_lines("logs/call_logs.txt")
@@ -138,13 +173,134 @@ def _summarize_sms():
     }
 
 def _summarize_logcat():
-    lines = _load_lines("logs/android_logcat.txt")
-    todays = get_todays_logs(lines)
-    recent = todays[:50] if todays else lines[:50]
+    path = "logs/android_logcat.txt"
+    if not os.path.exists(path):
+        return {
+            "total": 0,
+            "recent_sample": [],
+            "recent_label": "None",
+        }
+
+    total_lines = 0
+    today_sample = []
+    fallback_sample = []
+    today_str = datetime.now().strftime("%m-%d")
+    
+    try:
+        with open(path, "r", encoding="utf-8", errors="replace") as f:
+            for line in f:
+                total_lines += 1
+                line = line.strip()
+                if not line: 
+                    continue
+                
+                # Capture first 50 lines as fallback
+                if len(fallback_sample) < 50:
+                    fallback_sample.append(line)
+                
+                # Capture first 50 lines of today
+                if len(today_sample) < 50 and line.startswith(today_str):
+                    today_sample.append(line)
+        
+    except Exception as e:
+        print(f"Error reading logcat: {e}")
+        return {"total": 0, "recent_sample": ["Error reading log"], "recent_label": "Error"}
+
+    if today_sample:
+        return {
+            "total": total_lines,
+            "recent_sample": today_sample,
+            "recent_label": "Today",
+        }
+    else:
+        return {
+            "total": total_lines,
+            "recent_sample": fallback_sample,
+            "recent_label": "Recent (No Today Logs)",
+        }
+
+def _collect_context():
+    now = datetime.now()
+    props = _parse_system_properties()
+    
+    # 1. Get Model
+    # Try ro.product.model, ro.product.name
+    model = props.get("ro.product.model") or props.get("ro.product.name") or "Unknown"
+    
+    # 2. Get Android Version
+    # Try ro.build.version.release, ro.build.version.sdk
+    android_version = props.get("ro.build.version.release")
+    if not android_version:
+        sdk = props.get("ro.build.version.sdk")
+        if sdk and sdk.isdigit():
+             # Simple map for common versions
+            sdk_map = {'34':'14', '33':'13', '32':'12L', '31':'12', '30':'11', '29':'10', '28':'9'}
+            android_version = sdk_map.get(str(sdk), f"SDK {sdk}")
+        else:
+            android_version = "Unknown"
+
+    # 3. Get Kernel
+    # Rarely in props, so we check the top of logcat efficiently
+    kernel = _get_kernel_version_safe()
+
+    device_info = {
+        "model": model,
+        "android_version": android_version,
+        "kernel": kernel,
+    }
+    
+    # Load Section 65B data from JSON if available
+    section_65b_data = None
+    section_65b_file = "logs/section_65b_data.json"
+    if os.path.exists(section_65b_file):
+        try:
+            import json
+            with open(section_65b_file, 'r', encoding='utf-8') as f:
+                section_65b_data = json.load(f)
+        except Exception as e:
+            print(f"Warning: Could not load Section 65B data: {e}")
+    
+    # If Section 65B data not available, create basic version
+    if not section_65b_data:
+        section_65b_data = {
+            "acquisition_time": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "acquisition_date": now.strftime("%d/%m/%Y"),
+            "acquisition_time_only": now.strftime("%H:%M:%S"),
+            "evidence_hashes": _calculate_file_hashes(),
+            "device_identifiers": device_info,
+            "examiner": "Digital Forensic Analyst",
+            "case_number": "123456",
+            "total_evidence_files": len(_calculate_file_hashes()),
+        }
+    
+    # Ensure evidence_hashes exists even if loaded from JSON
+    if "evidence_hashes" not in section_65b_data or not section_65b_data["evidence_hashes"]:
+        print("ℹ️  Calculating evidence hashes (missing in source data)...")
+        section_65b_data["evidence_hashes"] = _calculate_file_hashes()
+        section_65b_data["total_evidence_files"] = len(section_65b_data["evidence_hashes"])
+
     return {
-        "total": len(lines),
-        "recent_sample": [line.strip() for line in recent],
-        "recent_label": "Today" if todays else "Recent",
+        "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+        "case_number": section_65b_data.get("case_number", "123456"),
+        "examiner": section_65b_data.get("examiner", "Digital Forensic Analyst"),
+        "device": device_info,
+        "calls": _summarize_calls(),
+        "sms": _summarize_sms(),
+        "logcat": _summarize_logcat(),
+        "chain_of_custody": [
+            "Evidence acquired from the Android device using approved ADB tools.",
+            "Logs extracted include Android Logcat, Call Logs, and SMS Logs.",
+            "Files verified with cryptographic hashes immediately after acquisition.",
+            "Analysis steps documented to preserve chain-of-custody integrity.",
+        ],
+        "methodology": [
+            "ADB-based acquisition of logcat, call, and SMS datasets.",
+            "Filtering by time range, keyword, severity, and subtype for targeted review.",
+            "Visualization of temporal activity and frequency distributions.",
+            "Threat triage and report packaging for court-ready evidence.",
+        ],
+        # TGCSB Section 65B Certificate (Indian Evidence Act, 1872)
+        "section_65b": section_65b_data
     }
 
 def _calculate_file_hashes():

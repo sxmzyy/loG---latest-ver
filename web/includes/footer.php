@@ -33,12 +33,6 @@
                         <label class="form-check-label" for="autoScroll">Auto-scroll logs</label>
                     </div>
                 </div>
-                <div class="mb-3">
-                    <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" id="soundAlerts">
-                        <label class="form-check-label" for="soundAlerts">Sound alerts for threats</label>
-                    </div>
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>

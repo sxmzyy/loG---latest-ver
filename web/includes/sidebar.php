@@ -132,13 +132,6 @@ $menuItems = [
         'badge' => null
     ],
     [
-        'id' => 'threats',
-        'title' => 'Threat Detection',
-        'icon' => 'fas fa-shield-alt',
-        'url' => ($basePath ?? '') . 'pages/threats.php',
-        'badge' => ['id' => 'threatCount', 'color' => 'danger', 'value' => '0']
-    ],
-    [
         'id' => 'live-monitor',
         'title' => 'Live Monitor',
         'icon' => 'fas fa-satellite-dish',

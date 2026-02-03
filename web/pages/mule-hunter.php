@@ -11,9 +11,23 @@ require_once '../includes/sidebar.php';
 // Helper to load JSON data
 function loadJsonData($filename) {
     global $logsPath;
-    $file = getLogsPath() . '/' . $filename;
-    if (file_exists($file)) {
-        return json_decode(file_get_contents($file), true);
+    
+    // 1. Try Config Path
+    $paths = [
+        getLogsPath() . '/' . $filename,
+        // 2. Try Absolute Path based on Document Root (Most Reliable)
+        dirname($_SERVER['DOCUMENT_ROOT']) . '/logs/' . $filename,
+        // 3. Try Relative Path (Fallback)
+        '../../logs/' . $filename
+    ];
+
+    foreach ($paths as $path) {
+        if (file_exists($path)) {
+            $content = file_get_contents($path);
+            if (!empty($content)) {
+                return json_decode($content, true);
+            }
+        }
     }
     return null;
 }

@@ -490,6 +490,48 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
     timeline = [t for t in timeline if t.get("timestamp")]
     timeline.sort(key=lambda x: x["timestamp"])
     
+    # 8. Post-Processing: Detect "Ghost" Logs (Gaps in Timeline)
+    # A gap > 10 minutes implies device off, flight mode, or wiped logs.
+    print("Analyzing timeline for Ghost Gaps...")
+    ghost_events = []
+    GAP_THRESHOLD_SECONDS = 10 * 60 # 10 minutes
+    
+    if len(timeline) > 1:
+        for i in range(len(timeline) - 1):
+            current_evt = timeline[i]
+            next_evt = timeline[i+1]
+            
+            try:
+                t1 = datetime.fromisoformat(current_evt["timestamp"])
+                t2 = datetime.fromisoformat(next_evt["timestamp"])
+                
+                delta = (t2 - t1).total_seconds()
+                
+                if delta > GAP_THRESHOLD_SECONDS:
+                    # Found a gap
+                    minutes = int(delta / 60)
+                    hours = round(delta / 3600, 1)
+                    
+                    gap_msg = f"{minutes} min" if minutes < 60 else f"{hours} hrs"
+                    
+                    # Create Ghost Event directly after the current event
+                    # Timestamp = t1 + 1 second (so it appears right after)
+                    ghost_ts = t1.isoformat() 
+                    
+                    ghost_events.append({
+                        "timestamp": ghost_ts,
+                        "type": "GHOST",
+                        "subtype": "Log Gap Detected",
+                        "content": f"👻 GHOST GAP: No logs for {gap_msg}. Possible device power-off or data removal.",
+                        "severity": "W"
+                    })
+            except Exception: pass
+            
+    # Merge Ghost events
+    timeline.extend(ghost_events)
+    timeline.sort(key=lambda x: x["timestamp"])
+
+    
     # Save to JSON
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(timeline, f, indent=4)

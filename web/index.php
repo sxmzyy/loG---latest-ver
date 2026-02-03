@@ -60,17 +60,7 @@ function getStats()
         }
     }
 
-    // Count Threats (Dual Space + Security Events)
-    $dualSpaceFile = $logsPath . '/dual_space_analysis.json';
-    if (file_exists($dualSpaceFile)) {
-        $json = json_decode(file_get_contents($dualSpaceFile), true);
-        if (isset($json['mule_score']) && $json['mule_score'] > 0) {
-            $stats['threatCount'] += 1; // Count the overall risk as 1 threat unit
-            if (isset($json['cloned_banking_apps'])) {
-                $stats['threatCount'] += count($json['cloned_banking_apps']);
-            }
-        }
-    }
+
 
     // Check unified timeline for high severity security events if needed
     $timelineFile = $logsPath . '/unified_timeline.json';
@@ -168,21 +158,7 @@ $stats = getStats();
                     </div>
                 </div>
 
-                <!-- Threat Count -->
-                <div class="col-lg-3 col-6">
-                    <div class="small-box bg-forensic-red">
-                        <div class="inner">
-                            <h3 id="totalThreats"><?= number_format($stats['threatCount']) ?></h3>
-                            <p>Threats Detected</p>
-                        </div>
-                        <div class="icon">
-                            <i class="fas fa-shield-alt"></i>
-                        </div>
-                        <a href="pages/threats.php" class="small-box-footer">
-                            Scan Now <i class="fas fa-arrow-circle-right"></i>
-                        </a>
-                    </div>
-                </div>
+
             </div>
             <!-- /.row -->
 
@@ -201,9 +177,7 @@ $stats = getStats();
                                 <a href="pages/extract-logs.php" class="btn btn-forensic btn-lg">
                                     <i class="fas fa-download me-2"></i>Extract Logs
                                 </a>
-                                <button class="btn btn-outline-warning" onclick="scanThreats()">
-                                    <i class="fas fa-shield-virus me-2"></i>Scan for Threats
-                                </button>
+
                                 <a href="pages/live-monitor.php" class="btn btn-outline-success">
                                     <i class="fas fa-satellite-dish me-2"></i>Live Monitoring
                                 </a>
@@ -580,7 +554,6 @@ function clearAllData(event) {
             document.getElementById('totalSms').textContent = '0';
             document.getElementById('totalCalls').textContent = '0';
             document.getElementById('totalLocations').textContent = '0';
-            document.getElementById('totalThreats').textContent = '0';
             
             // Reload the page to refresh all stats
             location.reload();

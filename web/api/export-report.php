@@ -22,7 +22,6 @@ $includeLogcat = $input['includeLogcat'] ?? true;
 $includeSms = $input['includeSms'] ?? true;
 $includeCalls = $input['includeCalls'] ?? true;
 $includeLocation = $input['includeLocation'] ?? true;
-$includeThreats = $input['includeThreats'] ?? true;
 
 $logsPath = getLogsPath();
 $exportPath = dirname($logsPath) . '/exports';

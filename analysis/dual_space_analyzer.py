@@ -4,8 +4,13 @@ Detects cloned banking apps used in mule operations
 """
 
 import os
+import sys
 import re
 import json
+
+# Force UTF-8 encoding for stdout to prevent Windows cp1252 errors
+if sys.platform == "win32" and hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 # Banking apps list (from app_sessionizer.py)
 BANKING_APPS = [
@@ -16,7 +21,9 @@ BANKING_APPS = [
     "com.bankofbaroda.mpassbook", "com.canara.canaramobile", "com.unionbank.ebanking",
     "com.idbi.mobile", "com.boi.mobile", "com.indusind.mobile", "com.yesbank.mobile",
     "com.kotak.mobile", "com.citi.citimobile", "com.sc.mobile", "com.hsbc.hsbcindia",
-    "com.rbl.mobile", "com.fi.money", "com.jupiter.money", "com.slice.app"
+    "com.rbl.mobile", "com.fi.money", "com.jupiter.money", "com.slice.app",
+    "com.dreamplug.androidapp", "com.paypal.android.p2pmobile", "com.bharatpe.app",
+    "com.phonepe.app.business"
 ]
 
 def parse_dual_space_apps(dual_space_file="logs/dual_space_apps.txt"):
@@ -30,7 +37,9 @@ def parse_dual_space_apps(dual_space_file="logs/dual_space_apps.txt"):
             "dual_apps_999": [],
             "dual_apps_10": [],
             "cloned_apps": [],
-            "cloned_banking_apps": []
+            "cloned_banking_apps": [],
+            "clone_count": 0,
+            "banking_clone_count": 0
         }
     
     with open(dual_space_file, "r", encoding="utf-8", errors="replace") as f:
@@ -51,10 +60,42 @@ def parse_dual_space_apps(dual_space_file="logs/dual_space_apps.txt"):
     main_apps = extract_packages(main_section.group(1) if main_section else "")
     dual_apps_999 = extract_packages(dual_999_section.group(1) if dual_999_section else "")
     dual_apps_10 = extract_packages(dual_10_section.group(1) if dual_10_section else "")
-    
+
+    # 🆕 FALBACK: Parse full package dump for combined UIDs (e.g., uid:10xxx,999xxx)
+    full_dump_file = "logs/full_package_dump.txt"
+    if os.path.exists(full_dump_file):
+        print(f"   ℹ️ Parsing full package dump for hidden clones...")
+        with open(full_dump_file, "r", encoding="utf-8", errors="replace") as f:
+            full_dump_content = f.read()
+            
+        # Regex to find lines with package name and UIDs
+        # Format: package:path/base.apk=com.package.name uid:10123,99910123
+        matches = re.findall(r'package:[^=]+=([^\s]+)\s+uid:([0-9,]+)', full_dump_content)
+        
+        for pkg, uids in matches:
+            if "999" in uids: # Check specifically for the '999' prefix in any of the UIDs
+                 # The regex might capture 'uid:10123,99910123'. 
+                 # We split by comma and check if any individual UID > 900000 or indicates dual profile
+                 uid_list = uids.split(',')
+                 is_dual = False
+                 for u in uid_list:
+                     if int(u) > 900000: # Standard parallel space UID offset
+                         is_dual = True
+                         break
+                 
+                 if is_dual:
+                     if pkg not in dual_apps_999: # Avoid duplicates
+                        dual_apps_999.append(pkg)
+
     # Find cloned apps (exist in both main and dual profiles)
+    # Note: If it's in dual_apps_999, it IS a cloned app effectively, even if not in main (but usually it is)
+    # Ideally, we verify it exists in main too, but for Mule Detection, ANY presence in Dual Space is the risk.
     all_dual_apps = set(dual_apps_999 + dual_apps_10)
-    cloned_apps = [pkg for pkg in main_apps if pkg in all_dual_apps]
+    
+    # Updated Logic: If it's in Dual Space, count it. 
+    # Previous logic required it to be in Main AND Dual. 
+    # But if hidden in main (unlikely) or just detected in Dual, it's still a Clone instance.
+    cloned_apps = list(all_dual_apps)
     
     # Filter for banking apps
     cloned_banking_apps = [pkg for pkg in cloned_apps if pkg in BANKING_APPS]

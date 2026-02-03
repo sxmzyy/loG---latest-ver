@@ -142,6 +142,13 @@ require_once '../includes/header.php';
         /* Slight reddish tint for security alerts */
     }
 
+    .timeline-event.category-GHOST {
+        border-left-color: #9E9E9E;
+        background: url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g fill="%232e2e2e" fill-rule="evenodd"><path d="M0 40L40 0H20L0 20M40 40V20L20 40"/></g></svg>') 0 0/10px 10px;
+        border-left-style: dashed;
+        opacity: 0.8;
+    }
+
     .timeline-event::before {
         content: '';
         position: absolute;
@@ -275,7 +282,8 @@ require_once '../includes/header.php';
     .timeline-container.hide-POWER .category-POWER,
     .timeline-container.hide-NOTIFICATION .category-NOTIFICATION,
     .timeline-container.hide-FINANCIAL .category-FINANCIAL,
-    .timeline-container.hide-SECURITY .category-SECURITY {
+    .timeline-container.hide-SECURITY .category-SECURITY,
+    .timeline-container.hide-GHOST .category-GHOST {
         display: none !important;
     }
 
@@ -346,6 +354,10 @@ require_once '../includes/header.php';
                             <input type="checkbox" class="category-filter" value="SECURITY" checked>
                             <i class="fas fa-exclamation-triangle" style="color: #F44336;"></i> Security
                         </label>
+                        <label>
+                            <input type="checkbox" class="category-filter" value="GHOST" checked>
+                            <i class="fas fa-ghost" style="color: #9E9E9E;"></i> Ghost
+                        </label>
                     </div>
                 </div>
 
@@ -369,7 +381,8 @@ require_once '../includes/header.php';
                     <strong>Power:</strong> <span id="powerCount">0</span> |
                     <strong>Notif:</strong> <span id="notifCount">0</span> |
                     <strong>Finance:</strong> <span id="financeCount">0</span> |
-                    <strong>Security:</strong> <span id="securityCount">0</span>
+                    <strong>Security:</strong> <span id="securityCount">0</span> |
+                    <strong>Ghost:</strong> <span id="ghostCount">0</span>
                 </div>
             </div>
 

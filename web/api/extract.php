@@ -32,51 +32,71 @@ if (!is_dir($logsPath)) {
 try {
     $stats = ['logcat' => 0, 'calls' => 0, 'sms' => 0, 'locations' => 0];
 
-    // Extract Logcat
-    if ($extractLogcat) {
-        $output = [];
-        exec('adb logcat -d -v time 2>&1', $output, $returnCode);
+    // ==========================================================
+    // UNIFIED EXTRACTION PIPELINE (Fix for Empty Logs)
+    // ==========================================================
+    // Instead of disparate ADB calls, we run the robust Python extractor
+    // This ensures full_package_dump.txt is generated correctly with UIDs.
+    
+    $rootPath = dirname(BASE_PATH);
+    // Use full python command if possible, or just 'python'
+    // We add buffering to see output clearly
+    $cmd = "cd \"$rootPath\" && python scripts/enhanced_extraction.py 2>&1";
+    
+    $output = [];
+    exec($cmd, $output, $returnCode);
 
-        if ($returnCode === 0 && !empty($output)) {
-            file_put_contents($logsPath . '/android_logcat.txt', implode("\n", $output));
-            $stats['logcat'] = count($output);
-        }
+    // DEBUG LOGGING
+    $debugFile = $logsPath . '/debug_extract.txt';
+    $debugContent = "Timestamp: " . date('Y-m-d H:i:s') . "\n";
+    $debugContent .= "Command: $cmd\n";
+    $debugContent .= "Return Code: $returnCode\n";
+    $debugContent .= "Output:\n" . implode("\n", $output) . "\n";
+    file_put_contents($debugFile, $debugContent);
+
+    if ($returnCode !== 0) {
+        $response['message'] .= " (Extraction failed: Return Code $returnCode. See debug_extract.txt)";
+    } else {
+        $stats['extraction_status'] = "Complete";
     }
 
+    // ==========================================================
+    // EXTRACT SMS, CALLS, AND LOCATION (Missing from enhanced_extraction.py)
+    // ==========================================================
+    
+    // Extract SMS Messages
+    if ($extractSms) {
+        $smsFile = $logsPath . '/sms_logs.txt';
+        $cmd = "adb shell content query --uri content://sms > \"$smsFile\" 2>&1";
+        exec($cmd, $output, $returnCode);
+    }
+    
     // Extract Call Logs
     if ($extractCalls) {
-        $output = [];
-        exec('adb shell content query --uri content://call_log/calls 2>&1', $output, $returnCode);
-
-        if ($returnCode === 0) {
-            $content = implode("\n", $output);
-            file_put_contents($logsPath . '/call_logs.txt', $content);
-            $stats['calls'] = substr_count($content, 'Row:');
-        }
+        $callFile = $logsPath . '/call_logs.txt';
+        $cmd = "adb shell content query --uri content://call_log/calls > \"$callFile\" 2>&1";
+        exec($cmd, $output, $returnCode);
     }
-
-    // Extract SMS Logs
-    if ($extractSms) {
-        $output = [];
-        exec('adb shell content query --uri content://sms 2>&1', $output, $returnCode);
-
-        if ($returnCode === 0) {
-            $content = implode("\n", $output);
-            file_put_contents($logsPath . '/sms_logs.txt', $content);
-            $stats['sms'] = substr_count($content, 'Row:');
-        }
-    }
-
-    // Extract Location Data
+    
+    // Extract Location Logs (from dumpsys location)
     if ($extractLocation) {
-        $output = [];
-        exec('adb shell dumpsys location 2>&1', $output, $returnCode);
+        $locationFile = $logsPath . '/location_logs.txt';
+        $cmd = "adb shell dumpsys location > \"$locationFile\" 2>&1";
+        exec($cmd, $output, $returnCode);
+    }
 
-        if ($returnCode === 0) {
-            $content = implode("\n", $output);
-            file_put_contents($logsPath . '/location_logs.txt', $content);
-            $stats['locations'] = substr_count($content, 'Location[');
-        }
+    // Update stats based on what the python script created
+    if (file_exists($logsPath . '/android_logcat.txt')) {
+        $stats['logcat'] = count(file($logsPath . '/android_logcat.txt'));
+    }
+    if (file_exists($logsPath . '/sms_logs.txt')) {
+         $stats['sms'] = substr_count(file_get_contents($logsPath . '/sms_logs.txt'), 'Row:');
+    }
+    if (file_exists($logsPath . '/call_logs.txt')) {
+         $stats['calls'] = substr_count(file_get_contents($logsPath . '/call_logs.txt'), 'Row:');
+    }
+    if (file_exists($logsPath . '/full_package_dump.txt')) {
+        $stats['packages'] = substr_count(file_get_contents($logsPath . '/full_package_dump.txt'), 'package:');
     }
 
     // Post-Processing: Generate Unified Timeline for Map
@@ -101,6 +121,29 @@ try {
         $response['message'] .= " (Social graph generation failed: " . implode(" ", $output) . ")";
     } else {
         $stats['social_graph'] = "Generated";
+    }
+
+    // Post-Processing: App Session Analysis (Mule Hunter)
+    $cmd = "cd \"$rootPath\" && python analysis/app_sessionizer.py 2>&1";
+    $output = [];
+    exec($cmd, $output, $returnCode);
+
+    if ($returnCode !== 0) {
+        $response['message'] .= " (App analysis failed: " . implode(" ", $output) . ")";
+    } else {
+        $stats['app_analysis'] = "Generated";
+    }
+
+    // Post-Processing: Dual Space / Mule Hunter Analysis (CRITICAL FIX)
+    // This was missing, causing the '0 apps detected' issue in Web UI
+    $cmd = "cd \"$rootPath\" && python analysis/dual_space_analyzer.py 2>&1";
+    $output = [];
+    exec($cmd, $output, $returnCode);
+
+    if ($returnCode !== 0) {
+        $response['message'] .= " (Dual Space analysis failed: " . implode(" ", $output) . ")";
+    } else {
+        $stats['dual_space_analysis'] = "Generated";
     }
 
     $response['success'] = true;

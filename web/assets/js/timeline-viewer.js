@@ -68,6 +68,7 @@ class TimelineViewer {
         document.getElementById('notifCount').textContent = breakdown.NOTIFICATION || 0;
         document.getElementById('financeCount').textContent = breakdown.FINANCIAL || 0;
         document.getElementById('securityCount').textContent = breakdown.SECURITY || 0;
+        document.getElementById('ghostCount').textContent = breakdown.GHOST || 0;
 
         this.statsRow.style.display = 'block';
     }
@@ -219,7 +220,7 @@ class TimelineViewer {
      * Category filtering now uses CSS classes for instant feedback
      */
     applyFilters() {
-        const categories = ['DEVICE', 'APP', 'NETWORK', 'POWER', 'NOTIFICATION', 'FINANCIAL', 'SECURITY'];
+        const categories = ['DEVICE', 'APP', 'NETWORK', 'POWER', 'NOTIFICATION', 'FINANCIAL', 'SECURITY', 'GHOST'];
 
         // 1. Handle Category Visibility via CSS Classes
         const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
@@ -409,6 +410,7 @@ class TimelineViewer {
             case 'NOTIFICATION': return 'fas fa-bell';
             case 'FINANCIAL': return 'fas fa-money-bill-wave';
             case 'SECURITY': return 'fas fa-exclamation-triangle';
+            case 'GHOST': return 'fas fa-ghost';
             default: return 'fas fa-circle';
         }
     }

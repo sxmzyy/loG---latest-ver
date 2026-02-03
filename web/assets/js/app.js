@@ -255,13 +255,13 @@ function updateDashboardStats() {
             updateBadge('smsCount', data.smsCount || 0);
             updateBadge('callCount', data.callCount || 0);
             updateBadge('locationCount', data.locationCount || 0);
-            updateBadge('threatCount', data.threatCount || 0);
+
 
             // Update dashboard small boxes if on dashboard
             updateSmallBox('totalSms', data.smsCount || 0);
             updateSmallBox('totalCalls', data.callCount || 0);
             updateSmallBox('totalLocations', data.locationCount || 0);
-            updateSmallBox('totalThreats', data.threatCount || 0);
+
         })
         .catch(error => {
             console.log('Stats update failed:', error);
@@ -719,91 +719,6 @@ function displayFilterResults(results) {
     }
 }
 
-// ========================================
-// THREAT SCANNING
-// ========================================
-function scanThreats() {
-    showLoading('Scanning for threats...');
-
-    fetch(ForensicApp.config.apiBase + 'scan-threats.php', {
-        method: 'POST'
-    })
-        .then(response => response.json())
-        .then(data => {
-            hideLoading();
-
-            if (data.threats && data.threats.length > 0) {
-                displayThreats(data.threats);
-                updateBadge('threatCount', data.threats.length);
-                showToast(`⚠️ Found ${data.threats.length} potential threats`, 'warning');
-
-                if (ForensicApp.config.soundAlerts) {
-                    playAlertSound();
-                }
-            } else {
-                showToast('✅ No threats detected', 'success');
-            }
-        })
-        .catch(error => {
-            hideLoading();
-            showToast('Scan error: ' + error.message, 'danger');
-        });
-}
-
-function displayThreats(threats) {
-    const container = document.getElementById('threatsList');
-    if (!container) return;
-
-    container.innerHTML = '';
-
-    threats.forEach((threat, index) => {
-        const severityClass = `threat-${threat.severity.toLowerCase()}`;
-        const card = `
-            <div class="card mb-3 ${severityClass} fade-in" style="animation-delay: ${index * 0.1}s">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="mb-1">
-                                <i class="fas fa-shield-alt me-2"></i>${threat.type}
-                            </h6>
-                            <p class="mb-1 text-muted small">${threat.description}</p>
-                            <small class="text-muted">${threat.timestamp}</small>
-                        </div>
-                        <span class="badge bg-${getSeverityColor(threat.severity)}">${threat.severity}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-        container.insertAdjacentHTML('beforeend', card);
-    });
-}
-
-function getSeverityColor(severity) {
-    const colors = {
-        'CRITICAL': 'danger',
-        'HIGH': 'warning',
-        'MEDIUM': 'info',
-        'LOW': 'secondary'
-    };
-    return colors[severity.toUpperCase()] || 'secondary';
-}
-
-function playAlertSound() {
-    // Simple beep using Web Audio API
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.frequency.value = 800;
-    oscillator.type = 'sine';
-    gainNode.gain.value = 0.1;
-
-    oscillator.start();
-    oscillator.stop(audioContext.currentTime + 0.2);
-}
 
 // ========================================
 // MAP FUNCTIONS (Leaflet)
@@ -936,11 +851,6 @@ document.addEventListener('keydown', function (e) {
         extractLogs();
     }
 
-    // Ctrl+Shift+S: Scan threats
-    if (e.ctrlKey && e.shiftKey && e.key === 'S') {
-        e.preventDefault();
-        scanThreats();
-    }
 
     // Escape: Close modals
     if (e.key === 'Escape') {
@@ -966,7 +876,7 @@ window.initDataTable = initDataTable;
 window.createChart = createChart;
 window.chartColors = chartColors;
 window.applyFilters = applyFilters;
-window.scanThreats = scanThreats;
+
 window.exportFullReport = exportFullReport;
 window.saveSettings = saveSettings;
 window.initLocationMap = initLocationMap;
