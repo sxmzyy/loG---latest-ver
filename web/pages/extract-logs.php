@@ -202,8 +202,8 @@ require_once '../includes/sidebar.php';
                                     <span id="progressPercent">0%</span>
                                 </div>
                                 <div class="progress" style="height: 20px;">
-                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
-                                        role="progressbar" id="extractProgress" style="width: 0%" aria-valuenow="0"
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-forensic-blue"
+                                        role="progressbar" id="extractProgress" style="width: 0%; transition: width 0.5s ease;" aria-valuenow="0"
                                         aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </div>
@@ -320,6 +320,8 @@ function refreshDeviceStatus() {
         });
 }
 
+let progressInterval;
+
 function startExtraction() {
     if (extractionInProgress) return;
     
@@ -332,47 +334,130 @@ function startExtraction() {
     const output = document.getElementById('extractOutput');
     
     appendLog(output, '🚀 Starting log extraction...', 'info');
-    updateExtractProgress(5);
+    updateExtractProgress(0);
     
-    // Call the extraction API
-    fetch('../api/extract.php', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            logcat: document.getElementById('extractLogcat').checked,
-            calls: document.getElementById('extractCalls').checked,
-            sms: document.getElementById('extractSms').checked,
-            location: document.getElementById('extractLocation').checked
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            updateExtractProgress(100);
-            appendLog(output, '✅ ' + data.message, 'success');
+    // Reset progress first to avoid stale state (Fix for "Run Twice" bug)
+    // Chain the promises correctly
+    fetch('../api/progress.php?action=reset')
+        .catch(err => console.warn("Reset progress failed, continuing anyway", err))
+        .then(() => {
+            startProgressPolling();
             
-            if (data.stats) {
-                appendLog(output, `📊 SMS: ${data.stats.sms} records`, 'info');
-                appendLog(output, `📊 Calls: ${data.stats.calls} records`, 'info');
-                appendLog(output, `📊 Locations: ${data.stats.locations} points`, 'info');
-                appendLog(output, `📊 Logcat: ${data.stats.logcat} lines`, 'info');
+            // Call the extraction API (Now it just starts the process)
+            return fetch('../api/extract.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    logcat: document.getElementById('extractLogcat').checked,
+                    calls: document.getElementById('extractCalls').checked,
+                    sms: document.getElementById('extractSms').checked,
+                    location: document.getElementById('extractLocation').checked
+                })
+            });
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                appendLog(output, '⏳ ' + data.message, 'info');
+                // The process runs in background. Polling will handle the rest.
+                // We keep extractionInProgress = true until polling hits 100%
+            } else {
+                appendLog(output, '❌ ' + (data.error || 'Launcher failed'), 'error');
+                showToast('Extraction failed to start', 'danger');
+                stopProgressPolling();
+                extractionInProgress = false;
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download me-2"></i>Start Extraction';
+            }
+        })
+        .catch(error => {
+            appendLog(output, '❌ Network error: ' + error.message, 'error');
+            showToast('Network error', 'danger');
+            stopProgressPolling();
+            extractionInProgress = false;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download me-2"></i>Start Extraction';
+        });
+}
+
+function startProgressPolling() {
+    stopProgressPolling();
+    progressInterval = setInterval(() => {
+        fetch('../api/progress.php')
+            .then(r => r.json())
+            .then(data => {
+                const percent = data.progress || 0;
+                const status = data.status || 'Processing...';
+                
+                updateExtractProgress(percent);
+                
+                // Check if complete
+                if (percent >= 100) {
+                    stopProgressPolling();
+                    // Add small delay to ensure stats file is flushed to disk
+                    setTimeout(finishExtraction, 1000);
+                }
+            })
+            .catch(e => console.error("Progress poll failed", e));
+    }, 500);
+}
+
+function finishExtraction() {
+    const btn = document.getElementById('extractBtn');
+    const output = document.getElementById('extractOutput');
+    
+    // Refresh device status to show new log info (e.g. buffer usage)
+    if (typeof refreshDeviceStatus === 'function') {
+        refreshDeviceStatus();
+    }
+    
+    // Fetch final stats (Cache busted)
+    fetch('../api/get_stats.php?t=' + new Date().getTime())
+        .then(r => r.json())
+        .then(data => {
+            appendLog(output, '✅ Extraction Complete!', 'success');
+            
+            if (data) {
+                if (data.sms) appendLog(output, `📊 SMS: ${data.sms} records`, 'info');
+                if (data.calls) appendLog(output, `📊 Calls: ${data.calls} records`, 'info');
+                if (data.locations) appendLog(output, `📊 Locations: ${data.locations} points`, 'info');
+                if (data.logcat) appendLog(output, `📊 Logcat: ${data.logcat} lines`, 'info');
+                
+                // Mule Hunter Stats (Active Search Results)
+                if (data.mule_risk) {
+                    let riskColor = 'info';
+                    if (data.mule_risk === 'HIGH' || data.mule_risk === 'CRITICAL') riskColor = 'error'; // 'error' maps to red in appendLog usually? No, class is 'log-error' usually. 
+                    // Wait, appendLog implementation? 
+                    // appendLog(element, message, type)
+                    // type 'error' usually adds text-danger.
+                    
+                    appendLog(output, `🕵️‍♂️ Mule Evaluation: ${data.mule_risk} RISK`, (data.mule_risk === 'LOW') ? 'success' : 'error');
+                }
+                if (data.cloned_banking_apps && data.cloned_banking_apps > 0) {
+                     appendLog(output, `🚨 ALERT: ${data.cloned_banking_apps} Cloned Banking App(s) Detected!`, 'error');
+                }
             }
             
             showToast('Logs extracted successfully!', 'success');
-        } else {
-            appendLog(output, '❌ ' + (data.error || 'Extraction failed'), 'error');
-            showToast('Extraction failed', 'danger');
-        }
-    })
-    .catch(error => {
-        appendLog(output, '❌ Network error: ' + error.message, 'error');
-        showToast('Network error', 'danger');
-    })
-    .finally(() => {
-        extractionInProgress = false;
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-download me-2"></i>Start Extraction';
-    });
+            
+            // Optional: Provide a link to view logs
+            appendLog(output, '👉 <a href="timeline.php" class="text-white" style="text-decoration: underline;">View Device Timeline</a>', 'info');
+        })
+        .catch(e => {
+            appendLog(output, '⚠️ Completed, but could not load stats: ' + e.message, 'warning');
+        })
+        .finally(() => {
+            extractionInProgress = false;
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download me-2"></i>Start Extraction';
+        });
+}
+
+function stopProgressPolling() {
+    if (progressInterval) {
+        clearInterval(progressInterval);
+        progressInterval = null;
+    }
 }
 
 function updateExtractProgress(percent) {

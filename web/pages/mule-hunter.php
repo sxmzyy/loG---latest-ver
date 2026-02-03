@@ -12,16 +12,17 @@ require_once '../includes/sidebar.php';
 function loadJsonData($filename) {
     global $logsPath;
     
-    // 1. Try Config Path
-    $paths = [
+    // Robust Path Logic
+    $possiblePaths = [
+        // 1. From Config (Best)
         getLogsPath() . '/' . $filename,
-        // 2. Try Absolute Path based on Document Root (Most Reliable)
-        dirname($_SERVER['DOCUMENT_ROOT']) . '/logs/' . $filename,
-        // 3. Try Relative Path (Fallback)
-        '../../logs/' . $filename
+        // 2. Relative to this script (web/pages -> ../../logs)
+        dirname(dirname(__DIR__)) . '/logs/' . $filename, 
+        // 3. Document Root parent
+        dirname($_SERVER['DOCUMENT_ROOT']) . '/logs/' . $filename
     ];
 
-    foreach ($paths as $path) {
+    foreach ($possiblePaths as $path) {
         if (file_exists($path)) {
             $content = file_get_contents($path);
             if (!empty($content)) {
@@ -66,6 +67,8 @@ if ($riskScore >= 70) {
     $riskText = 'MEDIUM RISK';
 }
 
+// Check if we need to auto-run scan (if data is missing)
+$shouldAutoScan = ($appSessionData === null || $dualSpaceData === null);
 ?>
 
 <!-- Main Content Wrapper -->
@@ -80,10 +83,11 @@ if ($riskScore >= 70) {
                     </h3>
                 </div>
                 <div class="col-sm-6">
-                    <ol class="breadcrumb float-sm-end">
-                        <li class="breadcrumb-item"><a href="../index.php">Home</a></li>
-                        <li class="breadcrumb-item active">Mule Hunter</li>
-                    </ol>
+                    <div class="float-sm-end">
+                        <button class="btn btn-danger shadow-sm" onclick="startMuleScan()" id="scanBtn">
+                            <i class="fas fa-crosshairs me-2"></i>Run Active Mule Search
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -203,6 +207,31 @@ if ($riskScore >= 70) {
                             <?php endif; ?>
                         </div>
                     </div>
+
+                    <!-- Heuristic Detections (New Row inside Column) -->
+                    <div class="card mt-4 border-warning">
+                         <div class="card-header bg-warning text-dark">
+                             <h3 class="card-title"><i class="fas fa-search-dollar me-2"></i>Suspected Financial (Heuristics)</h3>
+                         </div>
+                         <div class="card-body">
+                             <p class="text-muted small">Apps matching keywords (pay, wallet, crypto) but not in database.</p>
+                             <?php 
+                             $heuristicApps = $appSessionData['summary']['heuristic_financial_apps'] ?? [];
+                             if (!empty($heuristicApps)): 
+                             ?>
+                                 <ul class="list-group list-group-flush">
+                                 <?php foreach ($heuristicApps as $sapp): ?>
+                                     <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                         <code class="text-dark"><?= htmlspecialchars($sapp) ?></code>
+                                         <span class="badge bg-secondary">Suspect</span>
+                                     </li>
+                                 <?php endforeach; ?>
+                                 </ul>
+                             <?php else: ?>
+                                 <p class="text-success mb-0"><i class="fas fa-check-circle me-2"></i>No heuristic matches.</p>
+                             <?php endif; ?>
+                         </div>
+                    </div>
                 </div>
 
                 <!-- Dual Space / Cloned Apps -->
@@ -302,6 +331,64 @@ if ($riskScore >= 70) {
         </div>
     </div>
 </main>
+
+<script>
+function startMuleScan(isAuto = false) {
+    if (!isAuto && !confirm("Run active Mule Scan? This will extract fresh package data from the device and re-analyze.")) return;
+
+    const btn = document.getElementById('scanBtn');
+    // Store original text
+    const originalText = btn ? btn.innerHTML : '';
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Scanning...';
+    }
+    
+    fetch('../api/run_mule_scan.php')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                if(!isAuto) alert(data.message);
+                else console.log(data.message);
+                
+                // Reload
+                setTimeout(() => location.reload(), 15000); 
+            } else {
+                alert('Error: ' + data.error);
+                if(btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = originalText;
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            if(!isAuto) alert('Network Error');
+            if(btn) {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        });
+}
+
+// Auto-run if data is missing
+document.addEventListener('DOMContentLoaded', function() {
+    const shouldAutoScan = <?= $shouldAutoScan ? 'true' : 'false' ?>;
+    if (shouldAutoScan) {
+        console.log("⚠️ No Mule Data found. Auto-starting active scan...");
+        
+        // Show a toast or notification to user
+        const btn = document.getElementById('scanBtn');
+        if(btn) {
+            btn.innerHTML = '<i class="fas fa-magic me-2"></i>Auto-Analyzing...';
+            btn.disabled = true;
+        }
+        
+        startMuleScan(true); // Call with true to skip confirmation
+    }
+});
+</script>
 
 <?php
 require_once '../includes/footer.php';

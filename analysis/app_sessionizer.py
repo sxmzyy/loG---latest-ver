@@ -269,6 +269,35 @@ def analyze_app_sessions(logs_dir="logs", output_file="logs/app_sessions.json"):
             "mule_detection_reason": f"Device has {len(all_banking_apps)} banking apps installed (threshold: >5)" if mule_suspected else None
         }
     }
+
+    # Heuristic Detection (Find unknown financial apps)
+    FINANCIAL_KEYWORDS = ['wallet', 'pay', 'bank', 'upi', 'crypto', 'coin', 'exchange', 'finance', 'money', 'loan', 'credit', 'card', 'invest', 'gold', 'cash', 'rupee', 'paisa']
+    EXCLUDED_KEYWORDS = ['display', 'wallpaper', 'gameplay', 'backup', 'provider', 'service', 'setting']
+    
+    heuristic_apps = []
+    
+    for pkg in installed_packages:
+        if pkg in all_banking_apps:
+            continue
+            
+        pkg_lower = pkg.lower()
+        is_suspect = False
+        
+        for kw in FINANCIAL_KEYWORDS:
+            if kw in pkg_lower:
+                # Check for exclusions
+                if any(ex in pkg_lower for ex in EXCLUDED_KEYWORDS):
+                    continue
+                is_suspect = True
+                break
+        
+        if is_suspect:
+            heuristic_apps.append(pkg)
+            
+    output_data['summary']['heuristic_financial_apps'] = heuristic_apps
+    if heuristic_apps:
+        output_data['summary']['mule_risk_level'] = "HIGH" if len(heuristic_apps) > 3 or output_data['summary']['mule_risk_level'] == "HIGH" else "MEDIUM"
+        print(f"   🔍 Heuristic Detection: Found {len(heuristic_apps)} suspected financial apps")
     
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(output_data, f, indent=4)
@@ -303,8 +332,9 @@ def get_installed_packages(logs_dir):
             content = f.read()
             
             # Robust Regex: Capture everything between '=' and ' uid:' or end of line/space
-            # Format: package:path/base.apk=com.package.name uid:10123
-            matches = re.findall(r'=([a-zA-Z0-9_\.]+)', content)
+            # Format 1 (Standard): package:path/base.apk=com.package.name uid:10123
+            # Format 2 (Fallback): package:com.package.name
+            matches = re.findall(r'(?:=|package:)([a-zA-Z0-9_\.]+)', content)
             
             # Filter clean package names (must contain at least one dot)
             for pkg in matches:

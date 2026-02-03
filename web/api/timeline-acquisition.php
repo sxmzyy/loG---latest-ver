@@ -92,6 +92,14 @@ function getEvents()
 
     $transformedEvents = [];
 
+    // Load Fake Log Report
+    $fakeReportFile = $baseDir . '/logs/fake_log_report.json';
+    $fakeReport = [];
+    if (file_exists($fakeReportFile)) {
+        $fakeJson = json_decode(file_get_contents($fakeReportFile), true);
+        $fakeReport = $fakeJson['verification'] ?? [];
+    }
+
     foreach ($rawData as $idx => $ev) {
         // Map Category
         $cat = 'DEVICE'; // Default
@@ -120,7 +128,52 @@ function getEvents()
         // Timestamps
         $ts = $ev['timestamp']; // ISO8601
         $unix = strtotime($ts);
-
+        
+        // Verification / Ghost Detection
+        $confidence = 'High';
+        $verificationStatus = null;
+        
+        if ($ev['type'] === 'CALL' || $ev['type'] === 'SMS') {
+            $typePrefix = strtolower($ev['type']); // 'call' or 'sms'
+            
+            // Fuzzy match with verification report
+            if (!empty($fakeReport)) {
+                foreach ($fakeReport as $fid => $finfo) {
+                    if (strpos($fid, $typePrefix) !== 0) continue;
+                    
+                    // Extract timestamp from ID: "call_170689..."
+                    $parts = explode('_', $fid);
+                    if (count($parts) < 2) continue;
+                    
+                    $reportMs = floatval($parts[1]);
+                    $reportSec = $reportMs / 1000;
+                    
+                    // Check if timestamps match within 2 seconds
+                    if (abs($reportSec - $unix) < 2.0) {
+                        $verificationStatus = $finfo['status']; // 'verified', 'unverified', 'fake'
+                        $verificationProof = $finfo['proof'] ?? null;
+                        
+                        // Map status to Confidence
+                        if ($verificationStatus === 'verified') {
+                            $confidence = 'Verified (System)';
+                        } elseif ($verificationStatus === 'fake') {
+                            $confidence = 'FAKE / GHOST';
+                            $cat = 'GHOST'; // Promote to Ghost Category for visibility
+                        } elseif ($verificationStatus === 'unverified') {
+                            $confidence = 'Unverified (Old)';
+                        }
+                        break; // Stop after finding match
+                    }
+                }
+            }
+            
+            // If no match found but report exists, default to Unverified
+            if (!$verificationStatus && !empty($fakeReport)) {
+                $verificationStatus = 'unverified';
+                $confidence = 'Unverified';
+            }
+        }
+        
         $transformedEvents[] = [
             'id' => $idx,
             'category' => $cat,
@@ -130,11 +183,13 @@ function getEvents()
             'timestamp_unix' => $unix,
             'source' => $ev['type'],
             'event_nature' => 'LOG',
-            'confidence' => 'High',
+            'confidence' => ($cat === 'GHOST') ? 'Inferred' : $confidence,
             'raw_reference' => $ev['content'],
             'metadata' => [
                 'content' => $ev['content'],
-                'severity' => $ev['severity']
+                'severity' => $ev['severity'],
+                'verification' => $verificationStatus,
+                'verification_proof' => $verificationProof ?? null
             ]
         ];
     }

@@ -344,8 +344,21 @@ document.getElementById('filterTimeRange').addEventListener('change', function()
         this.value === 'custom' ? 'flex' : 'none';
 });
 
+let currentController = null;
+
 function applyFilters() {
     showLoading('Filtering logs...');
+    
+    // Abort previous request if running
+    if (currentController) {
+        currentController.abort();
+    }
+    currentController = new AbortController();
+    const signal = currentController.signal;
+    
+    // Clear previous results immediately
+    document.getElementById('filterTableBody').innerHTML = '';
+    document.getElementById('resultStats').style.display = 'none';
     
     const startTime = performance.now();
     
@@ -361,19 +374,22 @@ function applyFilters() {
         dateTo: document.getElementById('dateTo').value
     };
     
-    fetch('../api/filter.php', {
+    // Add cache busting timestamp
+    fetch('../api/filter.php?t=' + new Date().getTime(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(filters)
+        body: JSON.stringify(filters),
+        signal: signal
     })
     .then(response => response.json())
     .then(data => {
         hideLoading();
+        currentController = null;
         
         const endTime = performance.now();
         
         if (data.success) {
-            displayResults(data.results);
+            displayResults(data.results, filters.keyword);
             
             // Show stats
             document.getElementById('resultStats').style.display = 'flex';
@@ -386,12 +402,17 @@ function applyFilters() {
         }
     })
     .catch(error => {
+        if (error.name === 'AbortError') {
+            console.log('Fetch aborted');
+            return;
+        }
         hideLoading();
+        currentController = null;
         showToast('Network error: ' + error.message, 'danger');
     });
 }
 
-function displayResults(results) {
+function displayResults(results, searchKeyword) {
     const table = document.getElementById('filterTable');
     const tbody = document.getElementById('filterTableBody');
     const noResults = document.getElementById('noResults');
@@ -410,7 +431,15 @@ function displayResults(results) {
     noResults.style.display = 'none';
     table.style.display = 'table';
     
-    const keyword = document.getElementById('filterKeyword').value;
+    // Use the keyword that was used for the search, not the current DOM value
+    const keyword = searchKeyword || document.getElementById('filterKeyword').value;
+    
+    // DESTROY DataTable FIRST (Critical fix)
+    // We must destroy the old instance before modifying the DOM, 
+    // otherwise destroy() might revert our changes or cause conflicts.
+    if ($.fn.DataTable.isDataTable('#filterTable')) {
+        $('#filterTable').DataTable().destroy();
+    }
     
     tbody.innerHTML = results.map(row => `
         <tr>
@@ -421,10 +450,7 @@ function displayResults(results) {
         </tr>
     `).join('');
     
-    // Re-initialize DataTable
-    if ($.fn.DataTable.isDataTable('#filterTable')) {
-        $('#filterTable').DataTable().destroy();
-    }
+    // Initialize new DataTable
     initDataTable('filterTable');
 }
 

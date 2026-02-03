@@ -206,3 +206,12 @@ def monitor_logs(callback):
         error_msg = f"⚠️ Failed to start monitoring: {str(e)}"
         print(error_msg)
         callback(error_msg)
+
+if __name__ == "__main__":
+    print("📲 Starting Android Log Extraction...")
+    get_sms_logs()
+    get_call_logs()
+    get_contacts()
+    get_location_logs()
+    get_logcat()
+    print("✅ Log extraction complete.")

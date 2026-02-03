@@ -38,6 +38,7 @@ def main():
     # We'll try to run them, if they fail (no device), we continue to analysis of existing logs
     print("\n>>> PHASE 1: EXTRACTION (Requires Device)")
     run_script("scripts/enhanced_extraction.py")
+    run_script("scripts/android_logs.py") # Extract Calls, SMS, Contacts
     
     # Run other specific extractors if they are standalone (usually called by main.py or enhanced_extraction)
     # But let's assume enhanced_extraction does the heavy lifting for dumpsys.
@@ -63,6 +64,9 @@ def main():
     
     # Social Graph
     run_script("analysis/social_graph.py")
+    
+    # Fake Log Detector (Ghost Tags) 🆕
+    run_script("analysis/fake_log_detector.py")
     
     # 3. Timeline Generation (Aggregator)
     print("\n>>> PHASE 3: TIMELINE GENERATION")

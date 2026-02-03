@@ -273,12 +273,33 @@ def get_all_packages_with_uids():
             text=True,
             encoding="utf-8",
             errors="replace",
-            check=True,
+            check=False, # Verify manually
             timeout=20
         )
+        
+        output_content = result.stdout.strip()
+        
+        # Fallback if empty or failed
+        if result.returncode != 0 or not output_content:
+            print("⚠️ Complex package list failed (empty/error). Trying simple fallback...")
+            result_fallback = subprocess.run(
+                ["adb", "shell", "pm", "list", "packages"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=True,
+                timeout=20
+            )
+            output_content = result_fallback.stdout.strip()
+            
+        if not output_content:
+             print("❌ CRITICAL: Failed to get ANY package list.")
+        
         with open("logs/full_package_dump.txt", "w", encoding="utf-8") as f:
-            f.write(result.stdout)
-        print("✅ Full package list extracted")
+            f.write(output_content)
+            
+        print(f"✅ Full package list extracted ({len(output_content.splitlines())} entries)")
     except Exception as e:
         print(f"⚠️ Failed to extract full package list: {e}")
 
@@ -331,6 +352,59 @@ def get_detailed_system_dump():
         except Exception as e:
             print(f"   ❌ Error executing {name}: {e}")
 
+def get_logcat_dump():
+    """
+    Extract Android Logcat for Fake Log Detection
+    Captures:
+    - Main (App crashes, system messages)
+    - Radio (Telephony, Call states)
+    - Events (Activity manager, screen on/off)
+    """
+    try:
+        print("📜 Extracting System Logs (Logcat)...")
+        buffers = [
+            ("main", "android_logcat.txt"),
+            ("radio", "android_logcat_radio.txt"),
+            ("events", "android_logcat_events.txt")
+        ]
+        
+        for buffer_name, outfile in buffers:
+            print(f"   - Dumping {buffer_name} buffer...")
+            result = subprocess.run(
+                ["adb", "logcat", "-b", buffer_name, "-d"],
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                check=False,
+                timeout=15
+            )
+            with open(os.path.join("logs", outfile), "w", encoding="utf-8") as f:
+                f.write(result.stdout)
+                
+        print("✅ Logcat extracted successfully")
+    except Exception as e:
+        print(f"⚠️ Failed to extract logcat: {e}")
+def update_progress(percent, message):
+    """
+    Update extraction progress for frontend smooth bar
+    """
+    try:
+        import json
+        import os
+        # Ensure logs dir exists
+        os.makedirs("logs", exist_ok=True)
+        
+        data = {"progress": percent, "status": message}
+        # Use absolute path if possible or relative
+        with open("logs/extraction_progress.json", "w", encoding="utf-8") as f:
+            json.dump(data, f)
+            f.flush()
+            os.fsync(f.fileno()) # Force write to disk
+    except Exception as e:
+        with open("logs/python_progress_error.txt", "a") as f:
+            f.write(f"Error updating progress: {e}\n")
+
 def extract_all_enhanced_data():
     """
     Main function to extract all enhanced forensic data
@@ -340,17 +414,25 @@ def extract_all_enhanced_data():
     print("🔬 ENHANCED FORENSIC DATA EXTRACTION")
     print("="*60 + "\n")
     
+    update_progress(10, "Extracting App Usage Stats...")
     # App Sessionizer enhancements
     get_usage_stats()
+    
+    update_progress(12, "Extracting Recent Tasks...")
     get_recent_tasks()
     
+    update_progress(15, "Scanning WiFi Networks...")
     # Beacon Map enhancements
     get_wifi_networks()
+    
+    update_progress(18, "Scanning Bluetooth Devices...")
     get_bluetooth_devices()
     
+    update_progress(20, "Extracting Battery History...")
     # Power Forensics enhancements
     get_battery_history()
     
+    update_progress(22, "Extracting Network Stats...")
     # Network Intelligence enhancements
     get_network_stats()
     
@@ -359,13 +441,26 @@ def extract_all_enhanced_data():
     print("🆕 FOOL-PROOF FORENSICS")
     print("-" * 60 + "\n")
     
+    update_progress(25, "Extracting Notification History...")
     get_notification_history()  # UPI/OTP Correlator
+    
+    update_progress(28, "Extracting Device Identifiers...")
     get_device_identifiers()    # Section 65B Certificate
+    
+    update_progress(30, "Detecting Dual Space Apps...")
     get_dual_space_apps()       # Mule Account Scanner
+    
+    update_progress(32, "Extracting Full Package List...")
     get_all_packages_with_uids() # 🆕 Full Package Dump (The Fix)
     
+    update_progress(34, "Extracting System Logs (Ghost Detection)...")
+    get_logcat_dump()
+    
     # 🔥 PULL EVERYTHING (Deep Dump)
+    update_progress(35, "Creating Deep System Dump...")
     get_detailed_system_dump()
+    
+    update_progress(40, "Enhanced Extraction Complete")
     
     print("\n" + "="*60)
     print("✅ ENHANCED EXTRACTION COMPLETE")
