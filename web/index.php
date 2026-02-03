@@ -60,6 +60,13 @@ function getStats()
         }
     }
 
+    // Check Root Status
+    $rootFile = $logsPath . '/root_status.json';
+    $stats['rootStatus'] = null;
+    if (file_exists($rootFile)) {
+        $stats['rootStatus'] = json_decode(file_get_contents($rootFile), true);
+    }
+
 
 
     // Check unified timeline for high severity security events if needed
@@ -237,6 +244,26 @@ $stats = getStats();
                                     <div class="col-4">
                                         <span class="text-muted">Mode</span>
                                         <h6 id="usbMode">MTP</h6>
+                                    </div>
+                                </div>
+                                <div class="row text-center mt-3">
+                                    <div class="col-12">
+                                        <span class="text-muted">Root Access</span>
+                                        <?php if (isset($stats['rootStatus']) && $stats['rootStatus']): ?>
+                                            <?php if ($stats['rootStatus']['is_rooted']): ?>
+                                                <h6 class="text-danger fw-bold">
+                                                    <i class="fas fa-unlock me-1"></i>ROOTED (<?= $stats['rootStatus']['confidence'] ?> Confidence)
+                                                </h6>
+                                            <?php else: ?>
+                                                <h6 class="text-success fw-bold">
+                                                    <i class="fas fa-lock me-1"></i>NOT ROOTED
+                                                </h6>
+                                            <?php endif; ?>
+                                        <?php else: ?>
+                                            <h6 class="text-secondary">
+                                                <i class="fas fa-question-circle me-1"></i>Unknown
+                                            </h6>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>

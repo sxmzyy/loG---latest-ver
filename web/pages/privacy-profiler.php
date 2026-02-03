@@ -19,11 +19,39 @@ $fileContent = $fileExists ? file_get_contents($privacyFile) : null;
 if ($fileExists && $fileContent) {
     $privacyData = json_decode($fileContent, true);
     if (json_last_error() !== JSON_ERROR_NONE) {
-        $privacyData = ["location" => [], "camera" => [], "microphone" => [], "contacts" => [], "biometrics" => [], "clipboard" => [], "summary" => []];
+        $privacyData = [
+            "location" => [], "camera" => [], "microphone" => [], "contacts" => [], 
+            "biometrics" => [], "clipboard" => [], "storage" => [], "phone_state" => [],
+            "sms" => [], "calendar" => [], "sensors" => [], "body_sensors" => [],
+            "summary" => []
+        ];
         $jsonError = json_last_error_msg();
+    } else {
+        // Build summary if it doesn't exist by counting array lengths
+        if (!isset($privacyData['summary']) || empty($privacyData['summary'])) {
+            $privacyData['summary'] = [
+                'location' => count($privacyData['location'] ?? []),
+                'camera' => count($privacyData['camera'] ?? []),
+                'microphone' => count($privacyData['microphone'] ?? []),
+                'contacts' => count($privacyData['contacts'] ?? []),
+                'biometrics' => count($privacyData['biometrics'] ?? []),
+                'clipboard' => count($privacyData['clipboard'] ?? []),
+                'storage' => count($privacyData['storage'] ?? []),
+                'phone_state' => count($privacyData['phone_state'] ?? []),
+                'sms' => count($privacyData['sms'] ?? []),
+                'calendar' => count($privacyData['calendar'] ?? []),
+                'sensors' => count($privacyData['sensors'] ?? []),
+                'body_sensors' => count($privacyData['body_sensors'] ?? []),
+            ];
+        }
     }
 } else {
-    $privacyData = ["location" => [], "camera" => [], "microphone" => [], "contacts" => [], "biometrics" => [], "clipboard" => [], "summary" => []];
+    $privacyData = [
+        "location" => [], "camera" => [], "microphone" => [], "contacts" => [], 
+        "biometrics" => [], "clipboard" => [], "storage" => [], "phone_state" => [],
+        "sms" => [], "calendar" => [], "sensors" => [], "body_sensors" => [],
+        "summary" => []
+    ];
 }
 ?>
 
@@ -60,23 +88,31 @@ if ($fileExists && $fileContent) {
             <div class="row mb-4">
                 <?php
                 $cards = [
-                    'location' => ['icon' => 'map-marker-alt', 'color' => 'primary'],
-                    'camera' => ['icon' => 'camera', 'color' => 'danger'],
-                    'microphone' => ['icon' => 'microphone', 'color' => 'warning'],
-                    'biometrics' => ['icon' => 'fingerprint', 'color' => 'success']
+                    'location' => ['icon' => 'map-marker-alt', 'color' => 'primary', 'label' => 'Location'],
+                    'camera' => ['icon' => 'camera', 'color' => 'danger', 'label' => 'Camera'],
+                    'microphone' => ['icon' => 'microphone', 'color' => 'warning', 'label' => 'Microphone'],
+                    'biometrics' => ['icon' => 'fingerprint', 'color' => 'success', 'label' => 'Biometrics'],
+                    'contacts' => ['icon' => 'address-book', 'color' => 'info', 'label' => 'Contacts'],
+                    'clipboard' => ['icon' => 'clipboard', 'color' => 'secondary', 'label' => 'Clipboard'],
+                    'storage' => ['icon' => 'hdd', 'color' => 'dark', 'label' => 'Storage'],
+                    'phone_state' => ['icon' => 'phone', 'color' => 'primary', 'label' => 'Phone State'],
+                    'sms' => ['icon' => 'sms', 'color' => 'success', 'label' => 'SMS/MMS'],
+                    'calendar' => ['icon' => 'calendar', 'color' => 'info', 'label' => 'Calendar'],
+                    'sensors' => ['icon' => 'satellite-dish', 'color' => 'warning', 'label' => 'Sensors'],
+                    'body_sensors' => ['icon' => 'heartbeat', 'color' => 'danger', 'label' => 'Body Sensors']
                 ];
                 foreach ($cards as $key => $meta):
                     ?>
-                    <div class="col-md-3">
-                        <div class="card shadow-sm border-0">
-                            <div class="card-body p-3 d-flex align-items-center">
+                    <div class="col-md-3 col-lg-2 mb-3">
+                        <div class="card shadow-sm border-0 h-100">
+                            <div class="card-body p-2 d-flex align-items-center">
                                 <div
-                                    class="rounded-circle bg-<?= $meta['color'] ?>-subtle text-<?= $meta['color'] ?> p-3 me-3">
-                                    <i class="fas fa-<?= $meta['icon'] ?> fa-xl"></i>
+                                    class="rounded-circle bg-<?= $meta['color'] ?>-subtle text-<?= $meta['color'] ?> p-2 me-2">
+                                    <i class="fas fa-<?= $meta['icon'] ?> fa-lg"></i>
                                 </div>
                                 <div>
-                                    <h6 class="text-muted mb-0"><?= ucfirst($key) ?></h6>
-                                    <h4 class="mb-0 fw-bold"><?= $privacyData['summary'][$key] ?? 0 ?></h4>
+                                    <h6 class="text-muted mb-0 small"><?= $meta['label'] ?></h6>
+                                    <h5 class="mb-0 fw-bold"><?= $privacyData['summary'][$key] ?? 0 ?></h5>
                                 </div>
                             </div>
                         </div>
@@ -85,11 +121,12 @@ if ($fileExists && $fileContent) {
             </div>
 
             <div class="row">
-                <?php foreach (['location', 'camera', 'microphone', 'contacts', 'biometrics', 'clipboard'] as $key): ?>
+                <?php foreach (['location', 'camera', 'microphone', 'contacts', 'biometrics', 'clipboard', 'storage', 'phone_state', 'sms', 'calendar', 'sensors', 'body_sensors'] as $key): ?>
                     <div class="col-md-6 mb-4">
                         <div class="card h-100 shadow-sm border-0">
                             <div class="card-header border-0 bg-transparent">
-                                <h5 class="card-title fw-bold text-uppercase small text-muted"><?= $key ?> Access Details
+                                <h5 class="card-title fw-bold text-uppercase small text-muted">
+                                    <?= str_replace('_', ' ', $key) ?> Access Details
                                 </h5>
                             </div>
                             <div class="card-body p-0" style="max-height: 350px; overflow-y: auto;">

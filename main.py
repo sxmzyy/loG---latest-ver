@@ -86,8 +86,49 @@ def extract_logs():
     if device_info['success']:
         widgets["output_text"].insert(tk.END, f"   Device: {device_info['device_model']}\n")
         widgets["output_text"].insert(tk.END, f"   Android: {device_info['android_version']}\n")
+        
+        # Save device info to file for reporting
+        try:
+            os.makedirs("logs", exist_ok=True)
+            with open("logs/device_info.txt", "w", encoding="utf-8") as f:
+                f.write(f"Model: {device_info.get('device_model', 'Unknown')}\n")
+                f.write(f"Android Version: {device_info.get('android_version', 'Unknown')}\n")
+                # Add kernel if available
+                if 'kernel_version' in device_info:
+                    f.write(f"Kernel: {device_info['kernel_version']}\n")
+        except Exception as e:
+            print(f"Failed to save device info: {e}")
+            
     else:
         widgets["output_text"].insert(tk.END, f"   ⚠️ Could not get device info: {device_info['error']}\n")
+    
+    
+    # ═══════════════════════════════════════════════════════════════
+    # ROOT DETECTION CHECK
+    # ═══════════════════════════════════════════════════════════════
+    from scripts.detect_root import detect_root_status
+    widgets["output_text"].insert(tk.END, "\n🔍 Checking root status...\n")
+    widgets["output_text"].see(tk.END)
+    
+    try:
+        root_status = detect_root_status()
+        if root_status:
+            status_icon = "🔴" if root_status['is_rooted'] else "🟢"
+            status_text = "ROOTED" if root_status['is_rooted'] else "NOT ROOTED"
+            widgets["output_text"].insert(tk.END, f"   {status_icon} Device Status: {status_text}\n")
+            widgets["output_text"].insert(tk.END, f"   Confidence: {root_status['confidence']}\n")
+            widgets["output_text"].insert(tk.END, f"   Detections: {root_status['detection_count']}/{root_status['total_checks']}\n")
+            
+            if root_status['summary']:
+                widgets["output_text"].insert(tk.END, "   Root indicators:\n")
+                for indicator in root_status['summary'][:3]:  # Show top 3
+                    widgets["output_text"].insert(tk.END, f"     • {indicator}\n")
+        else:
+            widgets["output_text"].insert(tk.END, "   ⚠️ Could not check root status\n")
+    except Exception as e:
+        widgets["output_text"].insert(tk.END, f"   ⚠️ Root check error: {str(e)}\n")
+    
+    widgets["output_text"].see(tk.END)
     
     # Display buffer detection info
     widgets["output_text"].insert(tk.END, "\n🔍 Detecting log buffer capacity...\n")

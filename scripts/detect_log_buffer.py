@@ -169,13 +169,23 @@ def get_device_info():
             timeout=5
         )
         
+        # Get Kernel version
+        kernel_result = subprocess.run(
+            ['adb', 'shell', 'uname', '-r'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
         device_model = model_result.stdout.strip() if model_result.returncode == 0 else 'Unknown'
         android_version = version_result.stdout.strip() if version_result.returncode == 0 else 'Unknown'
+        kernel_version = kernel_result.stdout.strip() if kernel_result.returncode == 0 else 'Unknown'
         
         return {
             'success': True,
             'device_model': device_model,
             'android_version': android_version,
+            'kernel_version': kernel_version,
             'error': None
         }
     

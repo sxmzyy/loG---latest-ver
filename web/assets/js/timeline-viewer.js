@@ -174,6 +174,54 @@ class TimelineViewer {
         const details = document.createElement('div');
         details.className = 'event-details';
 
+        // --- VERIFICATION BANNER ---
+        if (event.metadata && event.metadata.verification) {
+            const status = event.metadata.verification; // 'verified', 'fake', 'unverified'
+            const proof = event.metadata.verification_proof;
+
+            const banner = document.createElement('div');
+            banner.style.padding = '12px';
+            banner.style.marginBottom = '12px';
+            banner.style.borderRadius = '6px';
+            banner.style.fontWeight = 'bold';
+            banner.style.display = 'flex';
+            banner.style.alignItems = 'center';
+            banner.style.justifyContent = 'space-between';
+
+            if (status === 'verified') {
+                banner.style.background = 'rgba(46, 204, 113, 0.2)';
+                banner.style.border = '1px solid #2ecc71';
+                banner.style.color = '#2ecc71';
+                banner.innerHTML = `
+                    <div><i class="fas fa-check-circle me-2"></i> VERIFIED LEGITIMATE</div>
+                    <div style="font-size: 0.8em; font-weight: normal; opacity: 0.8;">Confirmed by Source Analysis</div>
+                `;
+            } else if (status === 'fake') {
+                banner.style.background = 'rgba(231, 76, 60, 0.2)';
+                banner.style.border = '1px solid #e74c3c';
+                banner.style.color = '#e74c3c';
+                banner.innerHTML = `
+                    <div><i class="fas fa-exclamation-triangle me-2"></i> POTENTIALLY FAKE / GHOST LOG</div>
+                    <div style="font-size: 0.8em; font-weight: normal; opacity: 0.8;">Metadata Mismatch Detected</div>
+                `;
+            } else {
+                banner.style.background = 'rgba(149, 165, 166, 0.2)';
+                banner.style.border = '1px solid #95a5a6';
+                banner.style.color = '#95a5a6';
+                banner.innerHTML = `
+                    <div><i class="fas fa-question-circle me-2"></i> UNVERIFIED</div>
+                    <div style="font-size: 0.8em; font-weight: normal; opacity: 0.8;">No External Corroboration</div>
+                `;
+            }
+
+            details.appendChild(banner);
+
+            // Show Proof if available
+            if (proof) {
+                this.addDetailRow(details, 'Verification Proof', proof, 'text-warning');
+            }
+        }
+
         // Raw reference (MANDATORY - forensic traceability)
         this.addDetailRow(details, 'Raw Reference', event.raw_reference, 'raw-reference');
 
@@ -186,6 +234,9 @@ class TimelineViewer {
         // Event metadata
         if (event.metadata) {
             Object.entries(event.metadata).forEach(([key, value]) => {
+                // Skip verification keys as we handled them above
+                if (key === 'verification' || key === 'verification_proof') return;
+
                 if (value !== null && value !== undefined) {
                     this.addDetailRow(details, this.formatMetadataKey(key), value);
                 }

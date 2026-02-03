@@ -123,6 +123,7 @@ function parseCallLogs()
             $mins = floor($seconds / 60);
             $secs = $seconds % 60;
             $record['duration'] = sprintf("%d:%02d", $mins, $secs);
+            $record['durationSec'] = $seconds;  // Add seconds for total calculation
         }
 
         // Extract type

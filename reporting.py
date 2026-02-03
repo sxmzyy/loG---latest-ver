@@ -360,59 +360,91 @@ def _collect_context():
         "android_version": "Unknown",
         "kernel": "Unknown",
     }
-    raw_log = "".join(_load_lines("logs/android_logcat.txt"))
     
-    # Try multiple patterns for device model
-    model_patterns = [
-        r'ro\.product\.model[=:]\s*([^\s,\]]+)',
-        r'model=([^,\s\]]+)',
-        r'Build/([A-Z0-9]+)',
-        r'Device:\s*([^\s,]+)'
-    ]
-    for pattern in model_patterns:
-        model_match = re.search(pattern, raw_log, re.IGNORECASE)
-        if model_match:
-            device_info["model"] = model_match.group(1)
-            break
+    # PRIORITY 1: Read from device_info.txt if available (most reliable)
+    device_info_path = "logs/device_info.txt"
+    if os.path.exists(device_info_path):
+        try:
+            with open(device_info_path, 'r', encoding='utf-8', errors='replace') as f:
+                content = f.read()
+                
+                # Extract model
+                model_match = re.search(r'Model:\s*(.+)', content)
+                if model_match:
+                    device_info["model"] = model_match.group(1).strip()
+                
+                # Extract Android version
+                android_match = re.search(r'Android Version:\s*(.+)', content)
+                if android_match:
+                    device_info["android_version"] = android_match.group(1).strip()
+                
+                # Extract kernel
+                kernel_match = re.search(r'Kernel:\s*(.+)', content)
+                if kernel_match:
+                    device_info["kernel"] = kernel_match.group(1).strip()
+                    
+                print(f"✓ Device info loaded from device_info.txt")
+        except Exception as e:
+            print(f"Warning: Could not parse device_info.txt: {e}")
     
-    # Try multiple patterns for Android version
-    version_patterns = [
-        r'ro\.build\.version\.release[=:]\s*(\d+(?:\.\d+)?)',
-        r'Android\s+(\d+(?:\.\d+)?)',
-        r'SDK:\s*(\d+)',
-        r'API\s+level\s+(\d+)'
-    ]
-    for pattern in version_patterns:
-        version_match = re.search(pattern, raw_log, re.IGNORECASE)
-        if version_match:
-            ver = version_match.group(1)
-            try:
-                # Convert SDK level to Android version if needed
-                if ver.isdigit() and int(ver) > 20:
-                    sdk_to_android = {
-                        '34': '14', '33': '13', '32': '12L', '31': '12',
-                        '30': '11', '29': '10', '28': '9', '27': '8.1',
-                        '26': '8.0', '25': '7.1', '24': '7.0'
-                    }
-                    device_info["android_version"] = sdk_to_android.get(ver, ver)
-                else:
-                    device_info["android_version"] = ver
-                break
-            except ValueError:
-                device_info["android_version"] = ver
-                break
-    
-    # Try multiple patterns for kernel version
-    kernel_patterns = [
-        r'Linux\s+version\s+([^\s]+)',
-        r'Kernel:\s*([^\s,]+)',
-        r'ro\.kernel\.version[=:]\s*([^\s,\]]+)'
-    ]
-    for pattern in kernel_patterns:
-        kernel_match = re.search(pattern, raw_log, re.IGNORECASE)
-        if kernel_match:
-            device_info["kernel"] = kernel_match.group(1)
-            break
+    # FALLBACK: Try extracting from logcat if device_info.txt failed
+    if device_info["model"] == "Unknown" or device_info["android_version"] == "Unknown":
+        raw_log = "".join(_load_lines("logs/android_logcat.txt"))
+        
+        # Try multiple patterns for device model
+        if device_info["model"] == "Unknown":
+            model_patterns = [
+                r'ro\.product\.model[=:]\s*([^\s,\]]+)',
+                r'model=([^,\s\]]+)',
+                r'Build/([A-Z0-9]+)',
+                r'Device:\s*([^\s,]+)'
+            ]
+            for pattern in model_patterns:
+                model_match = re.search(pattern, raw_log, re.IGNORECASE)
+                if model_match:
+                    device_info["model"] = model_match.group(1)
+                    break
+        
+        # Try multiple patterns for Android version
+        if device_info["android_version"] == "Unknown":
+            version_patterns = [
+                r'ro\.build\.version\.release[=:]\s*(\d+(?:\.\d+)?)',
+                r'Android\s+(\d+(?:\.\d+)?)',
+                r'SDK:\s*(\d+)',
+                r'API\s+level\s+(\d+)'
+            ]
+            for pattern in version_patterns:
+                version_match = re.search(pattern, raw_log, re.IGNORECASE)
+                if version_match:
+                    ver = version_match.group(1)
+                    try:
+                        # Convert SDK level to Android version if needed
+                        if ver.isdigit() and int(ver) > 20:
+                            sdk_to_android = {
+                                '34': '14', '33': '13', '32': '12L', '31': '12',
+                                '30': '11', '29': '10', '28': '9', '27': '8.1',
+                                '26': '8.0', '25': '7.1', '24': '7.0'
+                            }
+                            device_info["android_version"] = sdk_to_android.get(ver, ver)
+                        else:
+                            device_info["android_version"] = ver
+                        break
+                    except ValueError:
+                        device_info["android_version"] = ver
+                        break
+        
+        # Try multiple patterns for kernel version
+        if device_info["kernel"] == "Unknown":
+            kernel_patterns = [
+                r'Linux\s+version\s+([^\s]+)',
+                r'Kernel:\s*([^\s,]+)',
+                r'ro\.kernel\.version[=:]\s*([^\s,\]]+)'
+            ]
+            for pattern in kernel_patterns:
+                kernel_match = re.search(pattern, raw_log, re.IGNORECASE)
+                if kernel_match:
+                    device_info["kernel"] = kernel_match.group(1)
+                    break
 
     # Load Section 65B data from JSON if available
     section_65b_data = None

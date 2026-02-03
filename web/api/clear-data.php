@@ -71,7 +71,8 @@ try {
             if ($files) {
                 foreach ($files as $file) {
                     $basename = basename($file);
-                    if (!in_array($basename, ['README.txt', 'README.json', '.gitkeep'])) {
+                    // Preserve these files as they contain analysis results
+                    if (!in_array($basename, ['README.txt', 'README.json', '.gitkeep', 'root_status.json', 'privacy_profile.json'])) {
                         if (file_exists($file)) {
                             if (@unlink($file)) {
                                 $result['filesDeleted']++;

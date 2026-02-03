@@ -132,11 +132,17 @@ function getEvents()
         // Verification / Ghost Detection
         $confidence = 'High';
         $verificationStatus = null;
+        $verificationProof = null;
         
         if ($ev['type'] === 'CALL' || $ev['type'] === 'SMS') {
             $typePrefix = strtolower($ev['type']); // 'call' or 'sms'
             
-            // Fuzzy match with verification report
+            // Default: All SMS/Call logs from device extraction are verified (source-confirmed)
+            $verificationStatus = 'verified';
+            $verificationProof = 'Extracted from device logs (Source: ' . $ev['type'] . ')';
+            $confidence = 'Verified (Source)';
+            
+            // Check if explicitly flagged as fake in verification report
             if (!empty($fakeReport)) {
                 foreach ($fakeReport as $fid => $finfo) {
                     if (strpos($fid, $typePrefix) !== 0) continue;
@@ -150,27 +156,16 @@ function getEvents()
                     
                     // Check if timestamps match within 2 seconds
                     if (abs($reportSec - $unix) < 2.0) {
-                        $verificationStatus = $finfo['status']; // 'verified', 'unverified', 'fake'
-                        $verificationProof = $finfo['proof'] ?? null;
-                        
-                        // Map status to Confidence
-                        if ($verificationStatus === 'verified') {
-                            $confidence = 'Verified (System)';
-                        } elseif ($verificationStatus === 'fake') {
+                        // Only override if explicitly marked as fake
+                        if ($finfo['status'] === 'fake') {
+                            $verificationStatus = 'fake';
+                            $verificationProof = $finfo['proof'] ?? 'Flagged as suspicious';
                             $confidence = 'FAKE / GHOST';
                             $cat = 'GHOST'; // Promote to Ghost Category for visibility
-                        } elseif ($verificationStatus === 'unverified') {
-                            $confidence = 'Unverified (Old)';
                         }
                         break; // Stop after finding match
                     }
                 }
-            }
-            
-            // If no match found but report exists, default to Unverified
-            if (!$verificationStatus && !empty($fakeReport)) {
-                $verificationStatus = 'unverified';
-                $confidence = 'Unverified';
             }
         }
         
