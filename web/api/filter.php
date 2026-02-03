@@ -106,31 +106,72 @@ try {
         $fileType = basename($file, '.txt');
 
         foreach ($lines as $line) {
-            // Keyword filter
-            if (!empty($keyword)) {
-                if ($caseSensitive) {
-                    if (strpos($line, $keyword) === false)
-                        continue;
-                } else {
-                    if (stripos($line, $keyword) === false)
-                        continue;
+            // --- STEP 1: PARSE METADATA (Time & Level) ---
+            $timestamp = '--';
+            $level = 'I'; // Default to Info
+            $logTimestamp = 0;
+
+            if ($fileType === 'android_logcat') {
+                // Logcat Format: 01-23 13:46:46.045 ... Level/Tag ... or Level Tag
+                // Extract Time
+                if (preg_match('/^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)/', $line, $match)) {
+                    $timestamp = $match[1];
+                    $logTimestamp = strtotime(date('Y') . '-' . $timestamp);
+                }
+                // Extract Severity (Robust: handle "E/Tag" and " E Tag")
+                if (preg_match('/(?:^|\s)([VDIWEF])(?:\/|\s)/', $line, $match)) {
+                    $level = $match[1];
+                }
+            } else {
+                // SMS/Call Logs: date=1770112968852
+                if (preg_match('/date=(\d{10,13})/', $line, $match)) {
+                    $ts = $match[1];
+                    // Convert ms to seconds if needed
+                    if (strlen($ts) > 10) $ts = substr($ts, 0, 10);
+                    
+                    $logTimestamp = (int)$ts;
+                    $timestamp = date('m-d H:i:s', $logTimestamp);
                 }
             }
 
-            // Regex filter
-            if (!empty($regex)) {
-                $flags = $caseSensitive ? '' : 'i';
-                if (!preg_match("/$regex/$flags", $line))
+            // --- STEP 2: APPLY FILTERS ---
+
+            // A. Time Range Filter
+            if ($timeThreshold > 0) {
+                // If we couldn't parse a time on a meaningful line, skip or keep? 
+                // Usually skip if strict, but if $logTimestamp is 0 it means parse failed.
+                // Let's assume if parse failed we might want to keep it if it's a stack trace following a valid line?
+                // For now, strict: if valid timestamp found, filter it.
+                if ($logTimestamp > 0 && $logTimestamp < $timeThreshold) {
                     continue;
+                }
             }
 
-            // Severity filter (for logcat)
-            if (!empty($severityPattern) && $fileType === 'android_logcat') {
-                if (!preg_match($severityPattern, $line))
-                    continue;
+            // B. Severity Filter
+            if (!empty($severityPattern)) {
+                // Map Level char to int for comparison? Or just Regex?
+                // The frontend sends specific levels. 
+                // If User selected 'E', they want 'E' or 'F'.
+                // If User selected 'W', they want 'W', 'E', 'F'.
+                // Simplest is to strict match the provided severity chars if we use checkboxes, 
+                // but here it seems we receive a pattern or single char?
+                // The input 'severity' generates '$severityPattern'.
+                
+                // If it's a regex pattern from input:
+                // But wait, $severityPattern might be "/[WEF]/" etc. matches against the LINE.
+                // Better to match against our parsed $level for reliability.
+                
+                // Let's rely on the regex pattern provided by backend setup OR manual check.
+                // If checking line for severity pattern:
+                if (!preg_match($severityPattern, $line)) {
+                    // Try matching against the extracted level just in case logic differs
+                    if (strpos($severityPattern, $level) === false) { 
+                        continue; 
+                    }
+                }
             }
 
-            // Category filter
+            // C. Category Filter
             if ($category !== 'all') {
                 global $LOG_TYPES;
                 if (isset($LOG_TYPES[ucfirst($category)])) {
@@ -140,31 +181,20 @@ try {
                 }
             }
 
-            // Extract timestamp and level
-            $timestamp = '--';
-            $level = 'I';
-
-            if (preg_match('/^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d+)/', $line, $match)) {
-                $timestamp = $match[1];
-            }
-
-            if (preg_match('/\s([VDIWEF])\//', $line, $match)) {
-                $level = $match[1];
-            }
-
-            // Time filter
-            if ($timeThreshold > 0) {
-                // Try to parse timestamp
-                $logTime = 0;
-                // Format: 01-23 13:46:46.045
-                if (preg_match('/^(\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2})/', $line, $match)) {
-                    // Assume current year as it's not in the log
-                    $logTime = strtotime(date('Y') . '-' . $match[1]);
+            // D. Keyword Filter
+            if (!empty($keyword)) {
+                if ($caseSensitive) {
+                    if (strpos($line, $keyword) === false) continue;
+                } else {
+                    if (stripos($line, $keyword) === false) continue;
                 }
+            }
 
-                if ($logTime > 0 && $logTime < $timeThreshold) {
+            // E. Regex Filter
+            if (!empty($regex)) {
+                $flags = $caseSensitive ? '' : 'i';
+                if (!preg_match("/$regex/$flags", $line))
                     continue;
-                }
             }
 
             $results[] = [
