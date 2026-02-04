@@ -883,3 +883,25 @@ window.initLocationMap = initLocationMap;
 window.addLocationMarker = addLocationMarker;
 window.clearLocationMarkers = clearLocationMarkers;
 window.fitMapToMarkers = fitMapToMarkers;
+window.fitMapToMarkers = fitMapToMarkers;
+
+// ========================================
+// UI FIXES (Sidebar)
+// ========================================
+document.addEventListener('DOMContentLoaded', function () {
+    // Manually handle sidebar toggle if AdminLTE fails
+    const toggleBtn = document.querySelector('[data-lte-toggle="sidebar"]');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            const body = document.body;
+            if (window.innerWidth >= 992) {
+                // Desktop: Toggle collapse
+                body.classList.toggle('sidebar-collapse');
+            } else {
+                // Mobile: Toggle open
+                body.classList.toggle('sidebar-open');
+            }
+        });
+    }
+});

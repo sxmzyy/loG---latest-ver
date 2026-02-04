@@ -4,8 +4,9 @@
  * PHP 8+ Configuration File
  */
 
-// Debug mode
-define('DEBUG_MODE', true);
+// Debug mode - SECURITY: Set to false in production to prevent information disclosure
+// Only enable during development/troubleshooting. Can be overridden via environment variable.
+define('DEBUG_MODE', getenv('DEBUG_MODE') === 'true' ? true : false);
 
 // Application Info
 define('APP_VERSION', 'v2.1.0');
@@ -19,13 +20,22 @@ define('PYTHON_PATH', 'python'); // Adjust if needed
 // ========================================
 // Cell Tower Geolocation API Configuration
 // ========================================
+// SETUP REQUIRED: Cell tower geolocation requires external API keys
+// 
 // OpenCellID API - Get free key at: https://opencellid.org/
-define('OPENCELLID_API_KEY', ''); // Your OpenCellID API key
+// - Sign up for free account
+// - Navigate to API section to get your key
+// - Paste key below
+define('OPENCELLID_API_KEY', getenv('OPENCELLID_API_KEY') ?: ''); // Your OpenCellID API key
 
 // Unwired Labs API - Get free key at: https://unwiredlabs.com/
-define('UNWIREDLABS_API_KEY', ''); // Your Unwired Labs API key
+// - Sign up for free account  
+// - Get API key from dashboard
+// - Paste key below
+define('UNWIREDLABS_API_KEY', getenv('UNWIREDLABS_API_KEY') ?: ''); // Your Unwired Labs API key
 
 // API preference order: 'opencellid', 'unwiredlabs', 'fallback'
+// If keys are not configured, system will use fallback mode (limited accuracy)
 define('CELL_LOOKUP_PROVIDER', 'opencellid');
 
 // If logs don't exist in parent, check current location

@@ -60,7 +60,7 @@ $currentPage = getCurrentPage();
                 <!-- Sidebar Toggle -->
                 <ul class="navbar-nav">
                     <li class="nav-item">
-                        <a class="nav-link" data-lte-toggle="sidebar" href="#" role="button">
+                        <a class="nav-link" id="mainSidebarToggle" href="#" role="button" onclick="toggleSidebar(event)">
                             <i class="fas fa-bars"></i>
                         </a>
                     </li>

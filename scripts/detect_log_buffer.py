@@ -158,7 +158,7 @@ def get_device_info():
             ['adb', 'shell', 'getprop', 'ro.product.model'],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=15
         )
         
         # Get Android version
@@ -166,7 +166,7 @@ def get_device_info():
             ['adb', 'shell', 'getprop', 'ro.build.version.release'],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=15
         )
         
         # Get Kernel version
@@ -174,7 +174,7 @@ def get_device_info():
             ['adb', 'shell', 'uname', '-r'],
             capture_output=True,
             text=True,
-            timeout=5
+            timeout=15
         )
         
         device_model = model_result.stdout.strip() if model_result.returncode == 0 else 'Unknown'

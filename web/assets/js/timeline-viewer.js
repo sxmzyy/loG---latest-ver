@@ -19,6 +19,7 @@ class TimelineViewer {
 
         this.allEvents = [];
         this.filteredEvents = [];
+        this.sortDescending = true; // Newest first by default
     }
 
     /**
@@ -35,6 +36,8 @@ class TimelineViewer {
             }
 
             this.allEvents = data.events || [];
+            // Sort by timestamp based on current sort direction
+            this.sortEvents();
             this.filteredEvents = this.allEvents;
 
             // Show retention notice (MANDATORY)
@@ -69,6 +72,7 @@ class TimelineViewer {
         document.getElementById('financeCount').textContent = breakdown.FINANCIAL || 0;
         document.getElementById('securityCount').textContent = breakdown.SECURITY || 0;
         document.getElementById('ghostCount').textContent = breakdown.GHOST || 0;
+        document.getElementById('voipCount').textContent = breakdown.VOIP || 0;
 
         this.statsRow.style.display = 'block';
     }
@@ -95,6 +99,31 @@ class TimelineViewer {
     }
 
     /**
+     * Helper: Format Timestamp for Display
+     * Converts ISO8601 to "Jan 01, 2023 14:30:00"
+     */
+    formatDisplayTime(isoString) {
+        if (!isoString) return '';
+        try {
+            // Check for potential epoch if not string
+            const date = new Date(isoString);
+            if (isNaN(date.getTime())) return isoString;
+
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false // 24-hour format preference for forensics
+            });
+        } catch (e) {
+            return isoString;
+        }
+    }
+
+    /**
      * Create event DOM element
      */
     createEventElement(event) {
@@ -110,13 +139,21 @@ class TimelineViewer {
         eventType.className = 'event-type';
         // Add Icon based on category
         const iconClass = this.getCategoryIcon(event.category);
-        eventType.innerHTML = `<i class="${iconClass}" style="margin-right: 8px; opacity: 0.8;"></i>${this.formatEventType(event.event_type)}`;
+
+        // Custom Header for VoIP
+        let headerText = this.formatEventType(event.event_type);
+        if (event.category === 'VOIP') {
+            headerText = 'VoIP Call';
+        }
+
+        eventType.innerHTML = `<i class="${iconClass}" style="margin-right: 8px; opacity: 0.8;"></i>${headerText}`;
 
         // UTC timestamp (ALWAYS VISIBLE - MANDATORY)
         const timestamp = document.createElement('div');
         timestamp.className = 'event-timestamp';
-        timestamp.textContent = event.timestamp_utc;
-        timestamp.title = `Local: ${event.timestamp_local}`;
+        // UPDATED: Use formatDisplayTime
+        timestamp.textContent = this.formatDisplayTime(event.timestamp_utc);
+        timestamp.title = `Raw: ${event.timestamp_utc}`;
 
         header.appendChild(eventType);
         header.appendChild(timestamp);
@@ -135,6 +172,14 @@ class TimelineViewer {
         const sourceBadge = document.createElement('span');
         sourceBadge.className = 'event-badge badge-source';
         sourceBadge.textContent = event.source;
+
+        // Special styling for VoIP Source
+        if (event.source === 'VOIP') {
+            sourceBadge.style.backgroundColor = '#8e44ad';
+            sourceBadge.style.color = 'white';
+            sourceBadge.innerHTML = '<i class="fas fa-headset" style="margin-right:4px;"></i>VoIP Call';
+        }
+
         meta.appendChild(sourceBadge);
 
         // SNAPSHOT label (MANDATORY for dumpsys events)
@@ -267,158 +312,72 @@ class TimelineViewer {
     }
 
     /**
-     * Apply filters (Optimized)
-     * Category filtering now uses CSS classes for instant feedback
+     * Apply filters
      */
     applyFilters() {
-        const categories = ['DEVICE', 'APP', 'NETWORK', 'POWER', 'NOTIFICATION', 'FINANCIAL', 'SECURITY', 'GHOST'];
-
-        // 1. Handle Category Visibility via CSS Classes
+        // 1. Get Selected Categories
         const selectedCategories = Array.from(document.querySelectorAll('.category-filter:checked'))
             .map(cb => cb.value);
 
-        categories.forEach(cat => {
-            if (selectedCategories.includes(cat)) {
-                this.container.classList.remove(`hide-${cat}`);
-            } else {
-                this.container.classList.add(`hide-${cat}`);
-            }
-        });
-
-        // 2. Handle Time Filtering (Still requires DOM iteration, but less frequent)
+        // 2. Get Time Range
         const startTime = document.getElementById('timeStart').value;
         const endTime = document.getElementById('timeEnd').value;
+        const startUnix = startTime ? Math.floor(new Date(startTime).getTime() / 1000) : 0;
+        const endUnix = endTime ? Math.floor(new Date(endTime).getTime() / 1000) : Number.MAX_SAFE_INTEGER;
 
-        const hasTimeFilter = startTime || endTime;
-
-        if (hasTimeFilter) {
-            const startUnix = startTime ? Math.floor(new Date(startTime).getTime() / 1000) : 0;
-            const endUnix = endTime ? Math.floor(new Date(endTime).getTime() / 1000) : Number.MAX_SAFE_INTEGER;
-
-            // Iterate children directly (faster than rebuilding)
-            const children = this.container.children;
-            let visibleCount = 0;
-
-            // Performance optimization: Using for loop for speed
-            for (let i = 0; i < children.length; i++) {
-                const eventDiv = children[i];
-                // Extract timestamp from dataset or re-bind it? 
-                // Storing raw unix in dataset would be faster.
-                // Assuming we can find the event object or add data-unix to DOM in createEventElement.
-                // For now, let's use the allEvents array index since we didn't add data-unix yet.
-                // Actually, using the ID is safer.
-                const eventId = eventDiv.dataset.eventId;
-                // Find event in memory (O(N) search is bad inside loop). 
-                // Better plan: just check class? No.
-                // Let's assume for now user cares about *Checkbox* speed.
-                // If time filter is changed, we accept a reload.
-                // If NOT time filter, we skip this heavy loop.
-
-                // Fallback: If time filter active, we might need to toggle 'hidden-time' class?
-            }
-
-            // For this optimization request, I will focus on the CHECKBOX responsiveness.
-            // If Time Filter is set, we will actually re-render to apply time limits correcty,
-            // BUT if only checkboxes change, we skip re-render.
-        } else {
-            // Ensure all time-hidden elements are shown if time filter cleared
-            // But since we are not implementing detailed time-hiding logic just yet, 
-            // let's stick to the "Checkbox Optimization" which is what was asked.
+        // Debug logging
+        if (startTime || endTime) {
+            console.log('=== TIME FILTER DEBUG ===');
+            console.log('Selected categories:', selectedCategories);
+            console.log('Time inputs:', { startTime, endTime });
+            console.log('Unix range:', { startUnix, endUnix });
+            console.log('Start ISO:', startTime ? new Date(startTime).toISOString() : 'none');
+            console.log('End ISO:', endTime ? new Date(endTime).toISOString() : 'none');
         }
 
-        // Recalculate stats based on DOM visibility
-        // This is tricky without iteration. simpler to calculate from allEvents + selectedCategories
-        const breakdown = {};
-        this.allEvents.forEach(e => {
-            // Check category filter
-            if (selectedCategories.includes(e.category)) {
-                // Check time filter (if active)
-                let timeMatch = true;
-                if (startTime || endTime) {
-                    const startUnix = startTime ? Math.floor(new Date(startTime).getTime() / 1000) : 0;
-                    const endUnix = endTime ? Math.floor(new Date(endTime).getTime() / 1000) : Number.MAX_SAFE_INTEGER;
-                    if (e.timestamp_unix < startUnix || e.timestamp_unix > endUnix) timeMatch = false;
+        // 3. Filter Data
+        const filtered = this.allEvents.filter(event => {
+            // Category Check
+            if (!selectedCategories.includes(event.category)) {
+                return false;
+            }
+
+            // Time Check
+            if (event.timestamp_unix < startUnix || event.timestamp_unix > endUnix) {
+                // Debug: Log first few rejected VOIP events
+                if (event.category === 'VOIP' && (startTime || endTime)) {
+                    console.log('VOIP rejected by time:', {
+                        event_time: event.timestamp_utc,
+                        event_unix: event.timestamp_unix,
+                        range: { startUnix, endUnix },
+                        tooEarly: event.timestamp_unix < startUnix,
+                        tooLate: event.timestamp_unix > endUnix
+                    });
                 }
-
-                if (timeMatch) {
-                    breakdown[e.category] = (breakdown[e.category] || 0) + 1;
-                }
+                return false;
             }
-        });
 
-        this.displayStats(breakdown);
-
-        // If Time Filter active, we DO need to re-render or hide elements.
-        // To keep it simple and responsive:
-        // We only call renderTimeline() if Time parameters changed.
-        // But detecting that is complex.
-        // Let's rely on the fact that the user complained about "Check Boxes".
-        // CSS Hiding does not remove elements from DOM, so "Stats" might be wrong if we don't recalc.
-        // I updated stats above.
-
-        // Handling Time Filter integration:
-        // If time filter is present, we might still have to use the old method OR hide elements.
-        // Let's stick to: Checkboxes = CSS. Time = Re-render (acceptable cost).
-
-        // If filters called due to checkbox change, we normally don't need renderTimeline.
-        // But if filteredEvents was modified by Time, we need to respect that.
-
-        // Revised Logic:
-        // 1. Filter filteredEvents based on TIME ONLY.
-        // 2. Render filteredEvents (if time changed, otherwise keep output).
-        // 3. Apply CSS classes for Categories.
-
-        // Check if we need to re-filter time (optimization: store last time values?)
-        // For now, let's just re-run time filtering on `allEvents` -> `filteredEvents`.
-        // Then filtering categories is just visual.
-
-        const filteredByTime = this.allEvents.filter(event => {
-            if (startTime) {
-                const startUnix = Math.floor(new Date(startTime).getTime() / 1000);
-                if (event.timestamp_unix < startUnix) return false;
-            }
-            if (endTime) {
-                const endUnix = Math.floor(new Date(endTime).getTime() / 1000);
-                if (event.timestamp_unix > endUnix) return false;
-            }
             return true;
         });
 
-        // Optimization: Only re-render if count changes (proxy for time change)
-        // or if explicitly requested.
-        // But `this.filteredEvents` is used by `renderTimeline`.
-        // If we change `this.filteredEvents`, we MUST render.
-        // But if only CHECKBOXES changed, we don't want to change `this.filteredEvents` (which drives the DOM list)
-        // We want `this.filteredEvents` to contain ALL categories, just hidden.
-
-        // So: `this.filteredEvents` should ONLY reflect Time Filtering.
-        // Category filtering is purely visual.
-
-        const prevLength = this.filteredEvents.length;
-        this.filteredEvents = filteredByTime;
-
-        // Re-render only if time filter matched count changed (or first run)
-        // Or strictly if specific time inputs changed.
-        // For simplicity: If length differs, definitely render.
-        // If length same, assumes same events? Not always, but usually sufficient for "Time Range".
-        // Let's just Render if Time Filter is active?
-        // Actually, initial load `filteredEvents` = `allEvents`.
-        // If I update `applyFilters` to only filter by Time, then `renderTimeline` will render ALL categories.
-        // Then CSS hides them.
-
-        // Check if we need to re-render DOM
-        // Real-world: Re-rendering 30k nodes is slow.
-        // If the array is identical references, we can skip.
-        // But `filter` creates new array.
-        // Let's just compare lengths for now as a heuristic, or a dirty flag.
-
-        if (this.filteredEvents.length !== prevLength || hasTimeFilter) {
-            // If time filter is applied, we unfortunately have to render (or optimize time hiding too).
-            // But if NO time filter, and length same (full list), we SKIP render!
-            if (this.filteredEvents.length !== document.getElementById('timelineContainer').childElementCount) {
-                this.renderTimeline();
-            }
+        if (startTime || endTime) {
+            console.log('Total filtered:', filtered.length);
+            console.log('VOIP in filtered:', filtered.filter(e => e.category === 'VOIP').length);
         }
+
+        this.filteredEvents = filtered;
+        // Sort filtered events by timestamp based on current sort direction
+        this.sortEvents();
+
+        // 4. Update Stats (Calculate breakdown of VISIBLE events)
+        const breakdown = {};
+        this.filteredEvents.forEach(e => {
+            breakdown[e.category] = (breakdown[e.category] || 0) + 1;
+        });
+        this.displayStats(breakdown);
+
+        // 5. Render
+        this.renderTimeline();
     }
 
     /**
@@ -462,7 +421,55 @@ class TimelineViewer {
             case 'FINANCIAL': return 'fas fa-money-bill-wave';
             case 'SECURITY': return 'fas fa-exclamation-triangle';
             case 'GHOST': return 'fas fa-ghost';
+            case 'VOIP': return 'fas fa-phone';
             default: return 'fas fa-circle';
         }
+    }
+
+    /**
+     * Sort events by timestamp based on current direction
+     */
+    sortEvents() {
+        if (this.sortDescending) {
+            // Newest first (descending) - use event ID as tiebreaker
+            this.allEvents.sort((a, b) => {
+                if (b.timestamp_unix !== a.timestamp_unix) {
+                    return b.timestamp_unix - a.timestamp_unix;
+                }
+                // If timestamps are equal, sort by event ID (descending)
+                return b.id - a.id;
+            });
+            this.filteredEvents.sort((a, b) => {
+                if (b.timestamp_unix !== a.timestamp_unix) {
+                    return b.timestamp_unix - a.timestamp_unix;
+                }
+                return b.id - a.id;
+            });
+        } else {
+            // Oldest first (ascending) - use event ID as tiebreaker
+            this.allEvents.sort((a, b) => {
+                if (a.timestamp_unix !== b.timestamp_unix) {
+                    return a.timestamp_unix - b.timestamp_unix;
+                }
+                // If timestamps are equal, sort by event ID (ascending)
+                return a.id - b.id;
+            });
+            this.filteredEvents.sort((a, b) => {
+                if (a.timestamp_unix !== b.timestamp_unix) {
+                    return a.timestamp_unix - b.timestamp_unix;
+                }
+                return a.id - b.id;
+            });
+        }
+    }
+
+    /**
+     * Toggle sort direction
+     */
+    toggleSortDirection() {
+        this.sortDescending = !this.sortDescending;
+        this.sortEvents();
+        this.renderTimeline();
+        return this.sortDescending ? 'Newest First' : 'Oldest First';
     }
 }

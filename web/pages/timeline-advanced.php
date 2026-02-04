@@ -50,6 +50,9 @@ require_once '../includes/sidebar.php';
 
                                 <input type="checkbox" class="btn-check" id="toggle-system" checked>
                                 <label class="btn btn-outline-warning" for="toggle-system">System</label>
+
+                                <input type="checkbox" class="btn-check" id="toggle-voip" checked>
+                                <label class="btn btn-outline-purple" for="toggle-voip">VoIP</label>
                             </div>
                         </div>
 
@@ -119,6 +122,10 @@ require_once '../includes/sidebar.php';
                         <div class="col">
                             <div class="text-warning">System</div>
                             <div class="fw-bold fs-6" id="stat-system">0</div>
+                        </div>
+                        <div class="col">
+                            <div class="text-purple">VoIP</div>
+                            <div class="fw-bold fs-6" id="stat-voip">0</div>
                         </div>
                         <div class="col">
                             <div class="text-muted">Flagged</div>

@@ -92,6 +92,64 @@ The Android Forensic Tool is a production-ready forensic analysis platform desig
 
 ---
 
+## ⚙️ Configuration
+
+### Environment Variables
+
+For optional features and custom settings, copy the environment template:
+
+```powershell
+copy .env.example .env
+```
+
+Edit `.env` to configure:
+
+- **DEBUG_MODE** - Set to `true` for development (default: `false` for security)
+- **Cell Tower API Keys** - For enhanced location geolocation
+- **SERVER_PORT** - Custom web server port (default: 8080)
+- **LOGS_PATH** - Custom log directory location
+
+### Cell Tower Geolocation Setup (Optional)
+
+Enhanced location tracking requires external API keys:
+
+**Option 1: OpenCellID (Recommended)**
+1. Sign up at [opencellid.org](https://opencellid.org/)
+2. Navigate to API section in your account
+3. Copy your API key to `.env`:
+   ```
+   OPENCELLID_API_KEY=your_key_here
+   ```
+
+**Option 2: Unwired Labs**
+1. Sign up at [unwiredlabs.com](https://unwiredlabs.com/)
+2. Get API key from dashboard
+3. Copy to `.env`:
+   ```
+   UNWIREDLABS_API_KEY=your_key_here
+   ```
+
+> **Note:** Without API keys, the system uses fallback mode with limited accuracy
+
+### Debug Mode
+
+**⚠️ SECURITY:** Debug mode is **disabled by default** for production safety.
+
+Enable only for development/troubleshooting:
+
+```powershell
+# In .env file
+DEBUG_MODE=true
+```
+
+Or via environment variable:
+```powershell
+$env:DEBUG_MODE="true"
+powershell -ExecutionPolicy Bypass -File start-server.ps1
+```
+
+---
+
 ## 📦 Project Structure
 
 ```
@@ -247,8 +305,27 @@ pip install -r requirements.txt
 
 **Web interface won't load?**
 - Check if PHP server is running
-- Verify port 8080 is not in use
+- Verify port 8080 is not in use by another application
 - Run as Administrator if needed
+
+**Port 8080 already in use?**
+```powershell
+# Find and kill process using port 8080
+Get-NetTCPConnection -LocalPort 8080 | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+# Or change port in start-server.ps1
+```
+
+**Debug mode not working?**
+- Ensure `.env` file exists (copy from `.env.example`)
+- Set `DEBUG_MODE=true` in `.env`
+- Or set environment variable: `$env:DEBUG_MODE="true"`
+- Restart PHP server after changes
+
+**Cell tower geolocation not working?**
+- Verify API keys are configured in `.env`
+- Check API key validity at provider website
+- Review browser console for API errors
+- System falls back to limited accuracy if keys invalid
 
 For detailed solutions, see [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
 

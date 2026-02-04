@@ -11,6 +11,7 @@
  */
 
 require_once '../includes/header.php';
+require_once '../includes/sidebar.php';
 ?>
 
 <style>
@@ -52,6 +53,30 @@ require_once '../includes/header.php';
     .category-filters label {
         margin-right: 15px;
         cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        border-radius: 6px;
+        transition: all 0.08s ease;
+        user-select: none;
+    }
+
+    .category-filters label:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .category-filters label:active {
+        background-color: rgba(255, 255, 255, 0.1);
+        transform: scale(0.98);
+    }
+
+    .category-filters input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        margin: 0;
+        accent-color: #00d4ff;
     }
 
     .timeline-events {
@@ -147,6 +172,10 @@ require_once '../includes/header.php';
         background: url('data:image/svg+xml;utf8,<svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg"><g fill="%232e2e2e" fill-rule="evenodd"><path d="M0 40L40 0H20L0 20M40 40V20L20 40"/></g></svg>') 0 0/10px 10px;
         border-left-style: dashed;
         opacity: 0.8;
+    }
+
+    .timeline-event.category-VOIP {
+        border-left-color: #8e44ad;
     }
 
     .timeline-event::before {
@@ -283,7 +312,8 @@ require_once '../includes/header.php';
     .timeline-container.hide-NOTIFICATION .category-NOTIFICATION,
     .timeline-container.hide-FINANCIAL .category-FINANCIAL,
     .timeline-container.hide-SECURITY .category-SECURITY,
-    .timeline-container.hide-GHOST .category-GHOST {
+    .timeline-container.hide-GHOST .category-GHOST,
+    .timeline-container.hide-VOIP .category-VOIP {
         display: none !important;
     }
 
@@ -319,12 +349,20 @@ require_once '../includes/header.php';
                 <button id="refreshBtn" class="btn btn-secondary" style="margin-left: 10px;">
                     <i class="fas fa-sync"></i> Refresh
                 </button>
+                <button id="toggleSortBtn" class="btn btn-outline-secondary" style="margin-left: 10px;" title="Toggle sort order">
+                    <i class="fas fa-sort-amount-down"></i> <span id="sortLabel">Newest First</span>
+                </button>
             </div>
 
             <!-- Filters -->
             <div class="timeline-filters">
                 <div class="filter-group">
-                    <span class="filter-label">Categories:</span>
+                    <span class="filter-label">Categories: 
+                        <span style="font-weight: normal; font-size: 0.85em; margin-left: 5px;">
+                            <a href="#" id="selectAllCats" style="text-decoration: none;">All</a> / 
+                            <a href="#" id="selectNoneCats" style="text-decoration: none;">None</a>
+                        </span>
+                    </span>
                     <div class="category-filters">
                         <label>
                             <input type="checkbox" class="category-filter" value="DEVICE" checked>
@@ -358,6 +396,10 @@ require_once '../includes/header.php';
                             <input type="checkbox" class="category-filter" value="GHOST" checked>
                             <i class="fas fa-ghost" style="color: #9E9E9E;"></i> Ghost
                         </label>
+                        <label>
+                            <input type="checkbox" class="category-filter" value="VOIP" checked>
+                            <i class="fas fa-phone" style="color: #8e44ad;"></i> VoIP
+                        </label>
                     </div>
                 </div>
 
@@ -382,7 +424,8 @@ require_once '../includes/header.php';
                     <strong>Notif:</strong> <span id="notifCount">0</span> |
                     <strong>Finance:</strong> <span id="financeCount">0</span> |
                     <strong>Security:</strong> <span id="securityCount">0</span> |
-                    <strong>Ghost:</strong> <span id="ghostCount">0</span>
+                    <strong>Ghost:</strong> <span id="ghostCount">0</span> |
+                    <strong>VoIP:</strong> <span id="voipCount">0</span>
                 </div>
             </div>
 
@@ -400,100 +443,130 @@ require_once '../includes/header.php';
             </div>
         </div>
     </div>
+</main>
 
-    <!-- Scroll To Top Button -->
-    <button id="scrollToTopBtn" title="Go to top">
-        <i class="fas fa-arrow-up"></i>
-    </button>
+<!-- Scroll To Top Button -->
+<button id="scrollToTopBtn" title="Go to top">
+    <i class="fas fa-arrow-up"></i>
+</button>
 
-    <script src="../assets/js/timeline-viewer.js"></script>
+<script src="../assets/js/timeline-viewer.js"></script>
 
-    <script>
-        // Scroll Button Logic
-        const scrollBtn = document.getElementById("scrollToTopBtn");
+<script>
+    // Scroll Button Logic
+    const scrollBtn = document.getElementById("scrollToTopBtn");
 
-        window.onscroll = function () {
-            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                scrollBtn.style.display = "block";
-            } else {
-                scrollBtn.style.display = "none";
-            }
-        };
+    window.onscroll = function () {
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            scrollBtn.style.display = "block";
+        } else {
+            scrollBtn.style.display = "none";
+        }
+    };
 
-        scrollBtn.addEventListener("click", function () {
-            window.scrollTo({
-                top: 0,
-                behavior: "smooth"
-            });
+    scrollBtn.addEventListener("click", function () {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
         });
+    });
 
-        // Initialize timeline viewer
-        let timelineViewer;
+    // Initialize timeline viewer
+    let timelineViewer;
 
-        document.addEventListener('DOMContentLoaded', function () {
-            timelineViewer = new TimelineViewer('timelineContainer');
+    document.addEventListener('DOMContentLoaded', function () {
+        timelineViewer = new TimelineViewer('timelineContainer');
 
-            // Auto-load if data exists
-            timelineViewer.loadTimeline();
+        // Auto-load if data exists
+        timelineViewer.loadTimeline();
 
-            // Extract timeline button
-            document.getElementById('extractTimelineBtn').addEventListener('click', function () {
-                const btn = this;
-                btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extracting...';
+        // Extract timeline button
+        document.getElementById('extractTimelineBtn').addEventListener('click', function () {
+            const btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Extracting...';
 
-                fetch('../api/timeline-acquisition.php?action=extract')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            alert(`Timeline extraction complete!\n\nTotal events: ${data.total_events}\n\nCheck console for audit log.`);
-                            console.log('Extraction Audit Log:', data.audit_log);
-                            timelineViewer.loadTimeline();
+            fetch('../api/timeline-acquisition.php?action=extract')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(`Timeline extraction complete!\n\nTotal events: ${data.total_events}\n\nCheck console for audit log.`);
+                        console.log('Extraction Audit Log:', data.audit_log);
+                        timelineViewer.loadTimeline();
+                    } else {
+                        // Check if instructions are provided
+                        if (data.instructions) {
+                            const msg = data.error + '\n\n' + data.instructions.join('\n');
+                            alert(msg);
+                            console.error('Technical error:', data.technical_error);
                         } else {
-                            // Check if instructions are provided
-                            if (data.instructions) {
-                                const msg = data.error + '\n\n' + data.instructions.join('\n');
-                                alert(msg);
-                                console.error('Technical error:', data.technical_error);
-                            } else {
-                                alert('Error: ' + (data.error || 'Unknown error'));
-                                if (data.trace) console.error(data.trace);
-                            }
+                            alert('Error: ' + (data.error || 'Unknown error'));
+                            if (data.trace) console.error(data.trace);
                         }
-                    })
-                    .catch(error => {
-                        alert('Error extracting timeline: ' + error.message);
-                        console.error(error);
-                    })
-                    .finally(() => {
-                        btn.disabled = false;
-                        btn.innerHTML = '<i class="fas fa-history"></i> Extract Timeline';
-                    });
-            });
-
-            // Refresh button
-            document.getElementById('refreshBtn').addEventListener('click', function () {
-                timelineViewer.loadTimeline();
-            });
-
-            // Filter listeners
-            document.querySelectorAll('.category-filter').forEach(cb => {
-                cb.addEventListener('change', function () {
-                    timelineViewer.applyFilters();
+                    }
+                })
+                .catch(error => {
+                    alert('Error extracting timeline: ' + error.message);
+                    console.error(error);
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-history"></i> Extract Timeline';
                 });
-            });
+        });
 
-            document.getElementById('applyFiltersBtn').addEventListener('click', function () {
-                timelineViewer.applyFilters();
-            });
+        // Refresh button
+        document.getElementById('refreshBtn').addEventListener('click', function () {
+            timelineViewer.loadTimeline();
+        });
 
-            document.getElementById('resetFiltersBtn').addEventListener('click', function () {
-                document.querySelectorAll('.category-filter').forEach(cb => cb.checked = true);
-                document.getElementById('timeStart').value = '';
-                document.getElementById('timeEnd').value = '';
-                timelineViewer.applyFilters();
+        // Sort toggle button
+        document.getElementById('toggleSortBtn').addEventListener('click', function () {
+            const newMode = timelineViewer.toggleSortDirection();
+            const icon = this.querySelector('i');
+            const label = document.getElementById('sortLabel');
+            
+            if (newMode === 'Newest First') {
+                icon.className = 'fas fa-sort-amount-down';
+                label.textContent = 'Newest First';
+            } else {
+                icon.className = 'fas fa-sort-amount-up';
+                label.textContent = 'Oldest First';
+            }
+        });
+
+        // Filter listeners - instant response on click
+        document.querySelectorAll('.category-filter').forEach(cb => {
+            cb.addEventListener('click', function () {
+                // Use setTimeout to allow checkbox state to update first
+                setTimeout(() => timelineViewer.applyFilters(), 0);
             });
         });
-    </script>
 
-    <?php require_once '../includes/footer.php'; ?>
+        document.getElementById('applyFiltersBtn').addEventListener('click', function () {
+            timelineViewer.applyFilters();
+        });
+
+        document.getElementById('resetFiltersBtn').addEventListener('click', function () {
+            document.querySelectorAll('.category-filter').forEach(cb => cb.checked = true);
+            document.getElementById('timeStart').value = '';
+            document.getElementById('timeEnd').value = '';
+            timelineViewer.applyFilters();
+        });
+
+        // Filter Helpers
+        document.getElementById('selectAllCats').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.category-filter').forEach(cb => cb.checked = true);
+            timelineViewer.applyFilters();
+        });
+
+        document.getElementById('selectNoneCats').addEventListener('click', function(e) {
+            e.preventDefault();
+            document.querySelectorAll('.category-filter').forEach(cb => cb.checked = false);
+            timelineViewer.applyFilters();
+        });
+    });
+</script>
+
+<?php require_once '../includes/footer.php'; ?>

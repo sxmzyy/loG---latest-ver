@@ -13,7 +13,8 @@ class MindMapTimeline {
                 'CALL': '#3498db',
                 'LOGCAT_APP': '#9b59b6',
                 'LOGCAT_NET': '#e74c3c',
-                'LOGCAT_SYS': '#f1c40f'
+                'LOGCAT_SYS': '#f1c40f',
+                'VOIP': '#8e44ad'
             },
             nodeRadius: {
                 root: 40,
@@ -26,10 +27,10 @@ class MindMapTimeline {
         this.state = {
             data: [],
             allNodes: [],
-            filters: new Set(['SMS', 'CALL', 'LOGCAT_APP', 'LOGCAT_NET', 'LOGCAT_SYS']),
+            filters: new Set(['SMS', 'CALL', 'LOGCAT_APP', 'LOGCAT_NET', 'LOGCAT_SYS', 'VOIP']),
             searchQuery: '',
             flaggedIds: new Set(),
-            expandedCategories: new Set(['SMS', 'CALL', 'LOGCAT_APP', 'LOGCAT_NET', 'LOGCAT_SYS']),
+            expandedCategories: new Set(['SMS', 'CALL', 'LOGCAT_APP', 'LOGCAT_NET', 'LOGCAT_SYS', 'VOIP']),
             statistics: {}
         };
 
@@ -144,7 +145,8 @@ class MindMapTimeline {
             'CALL': { id: 'cat-call', name: 'Phone Calls', type: 'category', children: [] },
             'LOGCAT_APP': { id: 'cat-app', name: 'App Activity', type: 'category', children: [] },
             'LOGCAT_NET': { id: 'cat-net', name: 'Network', type: 'category', children: [] },
-            'LOGCAT_SYS': { id: 'cat-sys', name: 'System', type: 'category', children: [] }
+            'LOGCAT_SYS': { id: 'cat-sys', name: 'System', type: 'category', children: [] },
+            'VOIP': { id: 'cat-voip', name: 'VoIP Calls', type: 'category', children: [] }
         };
 
         // Filter and add events to categories
@@ -413,6 +415,7 @@ class MindMapTimeline {
             app: this.state.data.filter(n => n.category === 'LOGCAT_APP').length,
             network: this.state.data.filter(n => n.category === 'LOGCAT_NET').length,
             system: this.state.data.filter(n => n.category === 'LOGCAT_SYS').length,
+            voip: this.state.data.filter(n => n.category === 'VOIP').length,
             flagged: this.state.flaggedIds.size
         };
 
@@ -430,6 +433,7 @@ class MindMapTimeline {
         updateStat('stat-app', stats.app);
         updateStat('stat-network', stats.network);
         updateStat('stat-system', stats.system);
+        updateStat('stat-voip', stats.voip);
         updateStat('stat-flagged', stats.flagged);
     }
 
@@ -439,7 +443,8 @@ class MindMapTimeline {
             'call': 'CALL',
             'app': 'LOGCAT_APP',
             'system': 'LOGCAT_SYS',
-            'network': 'LOGCAT_NET'
+            'network': 'LOGCAT_NET',
+            'voip': 'VOIP'
         };
 
         // Event type filters

@@ -103,6 +103,7 @@
 
 <!-- Custom Application JS -->
 <script src="<?= $basePath ?? '' ?>assets/js/app.js"></script>
+<script src="<?= $basePath ?? '' ?>assets/js/app-custom-fixes.js?v=<?= time() ?>"></script>
 
 <?php if (isset($additionalScripts)): ?>
     <?= $additionalScripts ?>

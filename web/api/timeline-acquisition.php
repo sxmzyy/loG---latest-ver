@@ -103,26 +103,29 @@ function getEvents()
     foreach ($rawData as $idx => $ev) {
         // Map Category
         $cat = 'DEVICE'; // Default
-        if ($ev['type'] === 'SMS' || $ev['type'] === 'CALL') {
-            $cat = 'APP'; // Map Comm to App for now as per legacy filters
+        
+        // Specific checks first
+        if ($ev['type'] === 'FINANCIAL') {
+            $cat = 'FINANCIAL';
+        } elseif ($ev['type'] === 'NOTIFICATION') {
+            $cat = 'NOTIFICATION';
+        } elseif ($ev['type'] === 'VOIP') {
+            $cat = 'VOIP';
+        } elseif ($ev['type'] === 'GHOST') {
+            $cat = 'GHOST';
+        } elseif ($ev['type'] === 'SECURITY') {
+            $cat = 'SECURITY';
+        } elseif ($ev['type'] === 'SMS' || $ev['type'] === 'CALL') {
+            $cat = 'APP'; 
+        } elseif (strpos($ev['type'], 'LOGCAT_POWER') !== false) {
+            $cat = 'POWER';
         } elseif (strpos($ev['type'], 'LOGCAT_NET') !== false) {
             $cat = 'NETWORK';
         } elseif (strpos($ev['type'], 'LOGCAT_APP') !== false) {
             $cat = 'APP';
-        } elseif ($ev['type'] === 'LOGCAT_POWER') {
-            $cat = 'POWER';
-        } elseif ($ev['type'] === 'LOGCAT_DEVICE') {
+        } elseif (strpos($ev['type'], 'LOGCAT') !== false) {
+            // All other LOGCAT_ events (DEVICE, RADIO, SYS) fall to DEVICE
             $cat = 'DEVICE';
-        } elseif ($ev['type'] === 'LOGCAT_SYS') {
-            $cat = 'DEVICE';
-        } elseif ($ev['type'] === 'NOTIFICATION') {
-            $cat = 'NOTIFICATION';
-        } elseif ($ev['type'] === 'FINANCIAL') {
-            $cat = 'FINANCIAL';
-        } elseif ($ev['type'] === 'SECURITY') {
-            $cat = 'SECURITY';
-        } elseif ($ev['type'] === 'GHOST') {
-            $cat = 'GHOST';
         }
 
         // Timestamps
@@ -198,7 +201,8 @@ function getEvents()
         'NOTIFICATION' => 0,
         'FINANCIAL' => 0,
         'SECURITY' => 0,
-        'GHOST' => 0
+        'GHOST' => 0,
+        'VOIP' => 0
     ];
 
     $debug_counts = [];

@@ -82,25 +82,40 @@ def extract_logs():
     
     # Display device information
     widgets["output_text"].insert(tk.END, "\n📱 Checking connected device...\n")
-    device_info = get_device_info()
-    if device_info['success']:
-        widgets["output_text"].insert(tk.END, f"   Device: {device_info['device_model']}\n")
-        widgets["output_text"].insert(tk.END, f"   Android: {device_info['android_version']}\n")
-        
-        # Save device info to file for reporting
-        try:
-            os.makedirs("logs", exist_ok=True)
-            with open("logs/device_info.txt", "w", encoding="utf-8") as f:
-                f.write(f"Model: {device_info.get('device_model', 'Unknown')}\n")
-                f.write(f"Android Version: {device_info.get('android_version', 'Unknown')}\n")
-                # Add kernel if available
-                if 'kernel_version' in device_info:
-                    f.write(f"Kernel: {device_info['kernel_version']}\n")
-        except Exception as e:
-            print(f"Failed to save device info: {e}")
-            
+    try:
+        device_info = get_device_info()
+    except Exception as e:
+        device_info = {
+            'success': False,
+            'device_model': 'Unknown',
+            'android_version': 'Unknown',
+            'kernel_version': 'Unknown',
+            'error': str(e)
+        }
+
+    if device_info.get('success'):
+        widgets["output_text"].insert(tk.END, f"   Device: {device_info.get('device_model', 'Unknown')}\n")
+        widgets["output_text"].insert(tk.END, f"   Android: {device_info.get('android_version', 'Unknown')}\n")
     else:
-        widgets["output_text"].insert(tk.END, f"   ⚠️ Could not get device info: {device_info['error']}\n")
+        widgets["output_text"].insert(tk.END, f"   ⚠️ Could not get device info: {device_info.get('error', 'Unknown error')}\n")
+
+    # Save device info to file for reporting (ALWAYS)
+    try:
+        log_dir = os.path.join(os.getcwd(), "logs")
+        os.makedirs(log_dir, exist_ok=True)
+        file_path = os.path.join(log_dir, "device_info.txt")
+        print(f"Saving device info to: {file_path}")
+        
+        with open(file_path, "w", encoding="utf-8") as f:
+            model = device_info.get('device_model', 'Unknown')
+            android = device_info.get('android_version', 'Unknown')
+            kernel = device_info.get('kernel_version', 'Unknown')
+            
+            f.write(f"Model: {model}\n")
+            f.write(f"Android Version: {android}\n")
+            f.write(f"Kernel: {kernel}\n")
+    except Exception as e:
+        print(f"Failed to save device info: {e}")
     
     
     # ═══════════════════════════════════════════════════════════════

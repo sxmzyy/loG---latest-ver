@@ -75,6 +75,13 @@ $menuItems = [
         'badge' => ['id' => 'muleRisk', 'color' => 'danger', 'value' => '!']
     ],
     [
+        'id' => 'threat-scanner',
+        'title' => 'Threat Scanner',
+        'icon' => 'fas fa-shield-virus',
+        'url' => ($basePath ?? '') . 'pages/threat-scanner.php',
+        'badge' => ['id' => 'threatrisk', 'color' => 'warning', 'value' => '!']
+    ],
+    [
         'id' => 'timeline-advanced',
         'title' => 'Advanced Timeline',
         'icon' => 'fas fa-history',
@@ -93,6 +100,13 @@ $menuItems = [
         'title' => 'Social Link Graph',
         'icon' => 'fas fa-project-diagram',
         'url' => ($basePath ?? '') . 'pages/social-graph.php',
+        'badge' => null
+    ],
+    [
+        'id' => 'apk-tracker',
+        'title' => 'APK Hunter',
+        'icon' => 'fas fa-box-open',
+        'url' => ($basePath ?? '') . 'pages/apk-tracker.php',
         'badge' => null
     ],
     // Removed non-functional features on modern Android:

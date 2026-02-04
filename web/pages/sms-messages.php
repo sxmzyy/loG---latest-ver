@@ -52,7 +52,8 @@ function parseSmsLogs()
         }
 
         // Extract body
-        if (preg_match('/body=([^,]+?)(?:,\s*\w+=|$)/', $line, $match)) {
+        // Enhanced regex to handle commas in body
+        if (preg_match('/body=(.+?)(?:,\s*(?:service_center|locked|sub_id|error_code|creator|seen|priority)=|$)/', $line, $match)) {
             $record['message'] = trim($match[1]);
         }
 
@@ -147,7 +148,8 @@ $receivedCount = $totalSms - $sentCount;
                 </div>
                 <div class="card-body">
                     <?php if ($totalSms > 0): ?>
-                        <table id="smsTable" class="table table-striped table-hover" style="width:100%">
+                        <div class="table-responsive">
+                            <table id="smsTable" class="table table-striped table-hover" style="width:100%">
                             <thead>
                                 <tr>
                                     <th><i class="fas fa-user me-1"></i>Contact</th>
@@ -160,12 +162,12 @@ $receivedCount = $totalSms - $sentCount;
                             <tbody>
                                 <?php foreach ($smsRecords as $sms): ?>
                                     <tr>
-                                        <td>
+                                        <td style="white-space: nowrap;">
                                             <i class="fas fa-user-circle me-2 text-muted"></i>
                                             <strong><?= htmlspecialchars($sms['contact']) ?></strong>
                                         </td>
-                                        <td><?= htmlspecialchars($sms['date']) ?></td>
-                                        <td><?= htmlspecialchars($sms['time']) ?></td>
+                                        <td style="white-space: nowrap;"><?= htmlspecialchars($sms['date']) ?></td>
+                                        <td style="white-space: nowrap;"><?= htmlspecialchars($sms['time']) ?></td>
                                         <td>
                                             <?php if ($sms['type'] === 'Received'): ?>
                                                 <span class="badge bg-success"><i
@@ -174,14 +176,17 @@ $receivedCount = $totalSms - $sentCount;
                                                 <span class="badge bg-info"><i class="fas fa-arrow-up me-1"></i>Sent</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td class="text-truncate" style="max-width: 300px;"
-                                            title="<?= htmlspecialchars($sms['message']) ?>">
+                                        <td style="min-width: 500px; white-space: nowrap; cursor: pointer;"
+                                            title="Click to view full message"
+                                            onclick="viewMessage('<?= htmlspecialchars($sms['contact']) ?>', '<?= htmlspecialchars($sms['date']) ?>', '<?= htmlspecialchars(addslashes($sms['message'])) ?>')">
+                                            <span class="text-primary"><i class="fas fa-eye me-1"></i></span>
                                             <?= htmlspecialchars($sms['message']) ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
-                        </table>
+                            </table>
+                        </div>
                     <?php else: ?>
                         <div class="text-center py-5">
                             <i class="fas fa-comment-slash fa-4x text-muted mb-3"></i>
@@ -195,6 +200,37 @@ $receivedCount = $totalSms - $sentCount;
                 </div>
             </div>
 
+        </div>
+    </div>
+    <!-- Message View Modal -->
+    <div class="modal fade" id="messageModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-comment-alt me-2"></i>Full Message</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <small class="text-muted">From/To:</small>
+                        <h6 id="modalContact" class="fw-bold"></h6>
+                    </div>
+                    <div class="mb-3">
+                        <small class="text-muted">Date:</small>
+                        <span id="modalDate"></span>
+                    </div>
+                    <hr>
+                    <div class="p-3 rounded border" style="background-color: #495057; color: #ffffff;">
+                        <p id="modalMessage" class="mb-0 text-break" style="white-space: pre-wrap;"></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="copyToClipboard()">
+                        <i class="fas fa-copy me-1"></i>Copy
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </main>
@@ -212,6 +248,24 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+function viewMessage(contact, date, message) {
+    document.getElementById('modalContact').textContent = contact;
+    document.getElementById('modalDate').textContent = date;
+    document.getElementById('modalMessage').textContent = message;
+    
+    var myModal = new bootstrap.Modal(document.getElementById('messageModal'));
+    myModal.show();
+}
+
+function copyToClipboard() {
+    var text = document.getElementById('modalMessage').textContent;
+    navigator.clipboard.writeText(text).then(function() {
+        alert('Message copied to clipboard!');
+    }, function(err) {
+        console.error('Could not copy text: ', err);
+    });
+}
 </script>
 SCRIPT;
 

@@ -158,6 +158,73 @@ function parseCallLogs()
     return $records;
 }
 
+// Fetch VoIP calls from Unified Timeline (Logcat analysis)
+function getVoipCallsFromTimeline() {
+    $timelineFile = dirname(__DIR__, 2) . '/logs/unified_timeline.json';
+    if (!file_exists($timelineFile)) return [];
+
+    $data = json_decode(file_get_contents($timelineFile), true);
+    $voipCalls = [];
+
+    foreach ($data as $evt) {
+        if (($evt['type'] ?? '') === 'VOIP') {
+            $metadata = $evt['metadata'] ?? [];
+            
+            // Only include significant calls (e.g. active) or grouped sessions
+            // If we have session groupings, use that to avoid 40 repeating events
+            // We'll rely on our new 'call_session_events' metadata to pick just one representative event per session
+            // Or if not grouped, we list them all? That might span too many.
+            // Best approach: Only show "Call Active" or grouped headers.
+            
+            // If we have duration calculated, that suggests a session start.
+            // Let's look for events with 'call_duration_seconds' which we added to grouped events.
+            // To avoid duplicates, we can pick the first event of a session.
+            // But 'call_duration_seconds' was added to ALL events in the session.
+            // We need a way to distinct sessions. We can group by time proximity here or 
+            // check if this event is the "Call Active" subtype.
+
+            if (isset($metadata['call_duration_seconds'])) {
+                // To avoid 40 duplicates, we'll store by minute-timestamp as a simple key
+                // Or just show them. But user has 40 events for 1 call.
+                // Let's filter for specific subtypes that indicate a distinct call action
+                $subtype = $evt['subtype'] ?? '';
+                if (stripos($subtype, 'Call Active') !== false || stripos($subtype, 'Incoming') !== false || stripos($subtype, 'Outgoing') !== false) {
+                    
+                     $timestamp = strtotime($evt['timestamp']);
+                     
+                     $record = [
+                        'contact' => 'Unknown (VoIP)', 
+                        'number' => 'VoIP',
+                        'date' => date('Y-m-d', $timestamp),
+                        'time' => date('H:i:s', $timestamp),
+                        'duration' => gmdate("i:s", $metadata['call_duration_seconds'] ?? 0),
+                        'durationSec' => $metadata['call_duration_seconds'] ?? 0,
+                        'type' => 'VoIP Call',
+                        'app' => 'VoIP', // Default
+                        'timestamp' => $timestamp
+                    ];
+
+                    // Refine App Name
+                    $content = $evt['content'] ?? '';
+                    if (stripos($content, 'whatsapp') !== false || stripos($subtype, 'whatsapp') !== false) $record['app'] = 'WhatsApp';
+                    elseif (stripos($content, 'telegram') !== false) $record['app'] = 'Telegram';
+                    elseif (stripos($content, 'instagram') !== false) $record['app'] = 'Instagram';
+                    elseif (stripos($content, 'messenger') !== false) $record['app'] = 'Messenger';
+                    elseif (stripos($content, 'signal') !== false) $record['app'] = 'Signal';
+
+                    // Update Contact Name if possible (from context)
+                    $record['contact'] = $record['app'] . ' User';
+
+                    // Deduplication key (same app, same minute)
+                    $key = $record['app'] . '_' . date('YmdHi', $timestamp);
+                    $voipCalls[$key] = $record; 
+                }
+            }
+        }
+    }
+    return array_values($voipCalls);
+}
+
 // Get frequent callers
 function getFrequentCallers($records, $limit = 5)
 {
@@ -174,10 +241,20 @@ function getFrequentCallers($records, $limit = 5)
 }
 
 $callRecords = parseCallLogs();
+// Merge VoIP Calls
+$voipRecords = getVoipCallsFromTimeline();
+$callRecords = array_merge($callRecords, $voipRecords);
+
+// Sort by timestamp desc
+usort($callRecords, function($a, $b) {
+    return $b['timestamp'] - $a['timestamp'];
+});
+
 $totalCalls = count($callRecords);
 $incomingCount = count(array_filter($callRecords, fn($r) => $r['type'] === 'Incoming'));
 $outgoingCount = count(array_filter($callRecords, fn($r) => $r['type'] === 'Outgoing'));
 $missedCount = count(array_filter($callRecords, fn($r) => $r['type'] === 'Missed'));
+$voipCount = count(array_filter($callRecords, fn($r) => $r['type'] === 'VoIP Call'));
 $frequentCallers = getFrequentCallers($callRecords);
 
 // Total call duration
@@ -246,6 +323,15 @@ $totalMins = floor(($totalDuration % 3600) / 60);
                         <div class="info-box-content">
                             <span class="info-box-text">Missed</span>
                             <span class="info-box-number"><?= number_format($missedCount) ?></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-3 col-lg-6 col-sm-6">
+                    <div class="info-box">
+                        <span class="info-box-icon" style="background-color: #8e44ad; color: white;"><i class="fas fa-headset"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">VoIP Calls</span>
+                            <span class="info-box-number"><?= number_format($voipCount) ?></span>
                         </div>
                     </div>
                 </div>
@@ -331,16 +417,19 @@ $totalMins = floor(($totalDuration % 3600) / 60);
                                                         'Incoming' => 'bg-success',
                                                         'Outgoing' => 'bg-info',
                                                         'Missed' => 'bg-danger',
+                                                        'VoIP Call' => 'bg-purple', // Custom class needed or inline style
                                                         default => 'bg-secondary'
                                                     };
                                                     $typeIcon = match ($call['type']) {
                                                         'Incoming' => 'fa-arrow-down',
                                                         'Outgoing' => 'fa-arrow-up',
                                                         'Missed' => 'fa-phone-slash',
+                                                        'VoIP Call' => 'fa-wifi',
                                                         default => 'fa-question'
                                                     };
+                                                    $customStyle = ($call['type'] === 'VoIP Call') ? 'style="background-color: #8e44ad;"' : '';
                                                     ?>
-                                                    <span class="badge <?= $typeClass ?>">
+                                                    <span class="badge <?= $typeClass ?>" <?= $customStyle ?>>
                                                         <i class="fas <?= $typeIcon ?> me-1"></i><?= $call['type'] ?>
                                                     </span>
                                                 </td>
@@ -439,14 +528,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Call Distribution Chart
+    // Call Distribution Chart
     createChart('callDistChart', 'doughnut', {
-        labels: ['Incoming', 'Outgoing', 'Missed'],
+        labels: ['Incoming', 'Outgoing', 'Missed', 'VoIP'],
         datasets: [{
-            data: [{$incomingCount}, {$outgoingCount}, {$missedCount}],
+            data: [{$incomingCount}, {$outgoingCount}, {$missedCount}, {$voipCount}],
             backgroundColor: [
                 chartColors.success,
                 chartColors.primary,
-                chartColors.danger
+                chartColors.danger,
+                '#8e44ad' // Purple for VoIP
             ],
             borderWidth: 0
         }]

@@ -45,7 +45,9 @@ def parse_sms_logs(log_content):
             record['type'] = 'Unknown'
         
         # Extract message body
-        body_match = re.search(r'body=([^,]+?)(?:,\s*\w+=|$)', line)
+        # Enhanced regex to handle commas in body
+        # Matches everything until a known following field or end of line
+        body_match = re.search(r'body=(.+?)(?:,\s*(?:service_center|locked|sub_id|error_code|creator|seen|priority)=|$)', line)
         if body_match:
             record['message'] = body_match.group(1).strip()
         else:

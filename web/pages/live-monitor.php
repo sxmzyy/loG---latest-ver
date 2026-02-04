@@ -174,6 +174,19 @@ require_once '../includes/sidebar.php';
                         </div>
                     </div>
 
+                            <!-- Options -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-danger text-white">
+                                    <h3 class="card-title">
+                                        <i class="fas fa-shield-alt me-2"></i>Threats Detected
+                                    </h3>
+                                </div>
+                                <div class="card-body text-center">
+                                    <h1 class="display-4 fw-bold text-danger mb-0" id="liveThreatCount">0</h1>
+                                    <small class="text-muted">Suspicious Events</small>
+                                </div>
+                            </div>
+
                     <!-- Options -->
                     <div class="card">
                         <div class="card-header">
@@ -193,6 +206,10 @@ require_once '../includes/sidebar.php';
                             <div class="form-check form-switch mb-2">
                                 <input class="form-check-input" type="checkbox" id="highlightErrors" checked>
                                 <label class="form-check-label" for="highlightErrors">Highlight Errors</label>
+                            </div>
+                             <div class="form-check form-switch mb-2">
+                                <input class="form-check-input" type="checkbox" id="detectThreats" checked>
+                                <label class="form-check-label text-danger" for="detectThreats"><strong>Active Threat Detector</strong></label>
                             </div>
                             <div class="mb-2">
                                 <label class="form-label small">Max Lines</label>
@@ -219,6 +236,16 @@ let isPaused = false;
 let logLines = [];
 let stats = { V: 0, D: 0, I: 0, W: 0, E: 0, F: 0 };
 let totalLines = 0;
+let threatCount = 0;
+
+// Simple Regex Signatures for Live Detection
+const THREAT_PATTERNS = [
+    { regex: /com\.spyzie|com\.mspy|com\.flexispy/i, name: "Spyware Package" },
+    { regex: /sms intercept|otp.*listen/i, name: "SMS Listener" },
+    { regex: /screen.*capture|record.*audio|keylog/i, name: "Surveillance Activity" },
+    { regex: /accessibility.*service.*enabled/i, name: "Accessibility Abuse" },
+    { regex: /bank.*overlay|inject.*view/i, name: "Banking Troj" }
+];
 
 function startLiveMonitor() {
     if (ForensicApp.state.isMonitoring) return;
@@ -265,6 +292,23 @@ function pauseMonitor() {
     }
 }
 
+function checkThreats(lineContent) {
+    if (!document.getElementById('detectThreats').checked) return false;
+
+    for (let pattern of THREAT_PATTERNS) {
+        if (pattern.regex.test(lineContent)) {
+            threatCount++;
+            document.getElementById('liveThreatCount').innerText = threatCount;
+            // Flash effect
+            const card = document.getElementById('liveThreatCount').closest('.card');
+            card.classList.add('border-danger');
+            setTimeout(() => card.classList.remove('border-danger'), 500);
+            return `🚨 THREAT DETECTED: ${pattern.name}`;
+        }
+    }
+    return null;
+}
+
 function simulateLiveMonitor() {
     // Sample log lines for simulation
     const sampleLogs = [
@@ -275,7 +319,10 @@ function simulateLiveMonitor() {
         { level: 'I', tag: 'PackageManager', msg: 'Package installed: com.example.newapp' },
         { level: 'D', tag: 'ConnectivityManager', msg: 'NetworkInfo: type=WIFI, state=CONNECTED' },
         { level: 'V', tag: 'AudioTrack', msg: 'setVolume(0.5, 0.5)' },
-        { level: 'I', tag: 'GCMonitor', msg: 'GC_CONCURRENT freed 2MB, 45% free' }
+        { level: 'I', tag: 'GCMonitor', msg: 'GC_CONCURRENT freed 2MB, 45% free' },
+        // Add fake threats for testing
+        { level: 'W', tag: 'AccessibilityManager', msg: 'Accessibility Service ENABLED for com.mspy.agent' },
+        { level: 'I', tag: 'SMSReceiver', msg: 'OTP detected in incoming SMS, broadcasting...' }
     ];
     
     const interval = setInterval(() => {
@@ -305,10 +352,18 @@ function appendLiveLine(text, levelClass = 'info', level = 'I') {
     const line = document.createElement('div');
     line.className = `log-entry log-${levelClass}`;
     line.dataset.level = level;
-    line.textContent = text;
     
+    // THREAT DETECTION HOOK
+    const threatMsg = checkThreats(text);
+    if (threatMsg) {
+        line.innerHTML = `<strong>${threatMsg}</strong><br>` + text;
+        line.className += ' bg-danger text-white p-2 mb-1 rounded';
+    } else {
+        line.textContent = text;
+    }
+
     // Highlight errors
-    if (document.getElementById('highlightErrors').checked && (level === 'E' || level === 'F')) {
+    if (!threatMsg && document.getElementById('highlightErrors').checked && (level === 'E' || level === 'F')) {
         line.style.fontWeight = 'bold';
     }
     

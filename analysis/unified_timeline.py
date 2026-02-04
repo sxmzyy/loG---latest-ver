@@ -3,25 +3,32 @@ import os
 import json
 import re
 from datetime import datetime
+from datetime import timedelta
+from collections import Counter
 
 # Improved regex for Logcat: 01-20 22:59:42.046 D/Tag(PID): Message OR 01-19 13:00:19.199 F/Tag ...
 # We'll use a more flexible regex: Timestamp Priority/Tag: Message
 LOGCAT_REGEX = re.compile(r'^(\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}\.\d{3})\s+([VDIWEF])\/([^\(:]+)(?:\(\s*\d+\))?:?\s+(.*)$')
 
-def parse_logcat_line(line):
+def clean_string(text):
+    """Sanitize string to remove non-printable characters."""
+    if not text: return ""
+    # Allow printables and common whitespace
+    return re.sub(r'[^\x20-\x7E\n\r\t]', '', str(text))
+
+def parse_logcat_line(line, year):
     # Try the flexible regex first
     match = LOGCAT_REGEX.match(line)
     if match:
         ts_str, priority, tag, message = match.groups()
-        current_year = datetime.now().year
         try:
-            # Handle MM-DD format by appending current year (heuristic)
-            ts = datetime.strptime(f"{current_year}-{ts_str}", "%Y-%m-%d %H:%M:%S.%f")
+            # Handle MM-DD format by appending inferred year
+            ts = datetime.strptime(f"{year}-{ts_str}", "%Y-%m-%d %H:%M:%S.%f")
             return {
                 "timestamp": ts.isoformat(),
                 "priority": priority,
-                "tag": tag.strip(),
-                "message": message.strip()
+                "tag": clean_string(tag.strip()),
+                "message": clean_string(message.strip())
             }
         except: pass
         
@@ -31,29 +38,73 @@ def parse_logcat_line(line):
     match = threadtime_regex.match(line)
     if match:
         ts_str, pid, tid, priority, tag, message = match.groups()
-        current_year = datetime.now().year
         try:
-            ts = datetime.strptime(f"{current_year}-{ts_str}", "%Y-%m-%d %H:%M:%S.%f")
+            ts = datetime.strptime(f"{year}-{ts_str}", "%Y-%m-%d %H:%M:%S.%f")
             return {
                 "timestamp": ts.isoformat(),
                 "priority": priority,
-                "tag": tag.strip(),
-                "message": message.strip()
+                "tag": clean_string(tag.strip()),
+                "message": clean_string(message.strip())
             }
         except: pass
 
     return None
 
+def infer_year_from_logs(logs_dir):
+    """Scan SMS/Call logs to find the most frequent year."""
+    years = Counter()
+    
+    # Check SMS Logs
+    sms_path = os.path.join(logs_dir, "sms_logs.txt")
+    if os.path.exists(sms_path):
+        try:
+            with open(sms_path, "r", encoding="utf-8", errors="replace") as f:
+                for _ in range(500): # Scan first 500 lines
+                    line = f.readline()
+                    if not line: break
+                    # "2023-01-01 12:00:00 | ..."
+                    match = re.search(r'(\d{4})-\d{2}-\d{2}', line)
+                    if match:
+                        years[int(match.group(1))] += 1
+        except: pass
+
+    # Check Call Logs
+    call_path = os.path.join(logs_dir, "call_logs.txt")
+    if os.path.exists(call_path):
+         try:
+            with open(call_path, "r", encoding="utf-8", errors="replace") as f:
+                for _ in range(500):
+                    line = f.readline()
+                    if not line: break
+                    # "date=1684343434343" (Epoch ms)
+                    match = re.search(r'date=(\d{13})', line)
+                    if match:
+                        ts = int(match.group(1)) / 1000
+                        dt = datetime.fromtimestamp(ts)
+                        years[dt.year] += 1
+         except: pass
+
+    if years:
+        best_year = years.most_common(1)[0][0]
+        print(f"Inferred Base Year for Logs: {best_year}")
+        return best_year
+    
+    print(f"Could not infer year, defaulting to current year: {datetime.now().year}")
+    return datetime.now().year
+
 def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json"):
     timeline = []
     
+    # 0. Infer Year
+    log_year = infer_year_from_logs(logs_dir)
+
     # 1. Process Logcat
     logcat_path = os.path.join(logs_dir, "android_logcat.txt")
     if os.path.exists(logcat_path):
         print(f"Processing Logcat: {logcat_path}")
         with open(logcat_path, "r", encoding="utf-8", errors="replace") as f:
             for line in f:
-                parsed = parse_logcat_line(line)
+                parsed = parse_logcat_line(line, log_year)
                 if parsed:
                     # Smart Classification
                     tag = parsed["tag"]
@@ -93,12 +144,16 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                                 percent = int(val * 100) if val <= 1.0 else val
                                 evt_subtype = f"Brightness {percent}%"
 
-                    elif "BatteryService" in tag or "healthd" in tag:
+                    elif "BatteryService" in tag or "healthd" in tag or "NtChg" in tag or "battery" in tag.lower():
                         evt_type = "LOGCAT_POWER"
                         evt_subtype = "Battery Info"
                         l_match = re.search(r'level:?(\d+)', msg)
                         if l_match:
                             evt_subtype = f"Battery {l_match.group(1)}%"
+                        elif "temp_region" in msg:
+                            evt_subtype = "Battery Temperature Control"
+                        elif "InGameStatus" in msg:
+                            evt_subtype = "Charging Status"
                             
                     elif "DreamManager" in tag:
                         evt_type = "LOGCAT_POWER"
@@ -160,7 +215,64 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                         elif "carrier config" in msg.lower():
                             evt_subtype = "Carrier Config Change"
 
-                    # 5b. Telephony/Radio Events (For Fake Call Detection)
+                    # 5b. VoIP Call Detection (WhatsApp, Telegram, etc.)
+                    # 5b. VoIP Call Detection (WhatsApp, Telegram, etc.)
+                    elif (any(voip_app in tag.lower() or voip_app in msg.lower() for voip_app in 
+                             ["voip", "whatsapp.voipcalling", "telegram.messenger.voip", "viber.voip", 
+                              "discord.rtcconnection", "signal.calling"]) or 
+                          ("msys" in tag.lower() and "[n wa]" in msg.lower())):
+                        
+                        evt_type = "VOIP"
+                        
+                        # Determine app
+                        if "whatsapp" in tag.lower() or "whatsapp" in msg.lower() or "[n wa]" in msg.lower():
+                            app_name = "WhatsApp"
+                        elif "telegram" in tag.lower() or "telegram" in msg.lower():
+                            app_name = "Telegram"
+                        elif "instagram" in tag.lower() or "instagram" in msg.lower():
+                            app_name = "Instagram"
+                        elif "messenger" in tag.lower() or "messenger" in msg.lower():
+                            app_name = "Facebook Messenger"
+                        elif "discord" in tag.lower() or "discord" in msg.lower():
+                            app_name = "Discord"
+                        elif "signal" in tag.lower() or "signal" in msg.lower():
+                            app_name = "Signal"
+                        elif "viber" in tag.lower() or "viber" in msg.lower():
+                            app_name = "Viber"
+                        else:
+                            app_name = "VoIP App"
+                        
+                        # Determine call state
+                        if any(keyword in msg.lower() for keyword in ["incoming", "ringing", "call from"]):
+                            evt_subtype = f"{app_name} Incoming Call"
+                        elif any(keyword in msg.lower() for keyword in ["outgoing", "calling", "dialing"]):
+                            evt_subtype = f"{app_name} Outgoing Call"
+                        elif any(keyword in msg.lower() for keyword in ["ended", "disconnected", "call end"]):
+                            evt_subtype = f"{app_name} Call Ended"
+                        elif any(keyword in msg.lower() for keyword in ["missed", "declined", "rejected"]):
+                            evt_subtype = f"{app_name} Missed Call"
+                        elif "voipaudiomanager" in msg.lower() or "audio" in msg.lower() or "connection" in msg.lower():
+                            evt_subtype = f"{app_name} Call Active/Connecting"
+                        else:
+                            evt_subtype = f"{app_name} Activity"
+                    
+                    # Generic VoIP detection via AudioManager / AudioEffectControlService (Integer Modes)
+                    # Mode 2 = IN_CALL, Mode 3 = IN_COMMUNICATION
+                    elif ("AudioManager" in tag or "AudioEffectControlService" in tag) and ("mode" in msg.lower() and "=" in msg):
+                        # Matches "mode = 2", "mode=2", "mode=3"
+                        if "mode = 2" in msg.lower() or "mode=2" in msg.lower():
+                             evt_type = "VOIP"
+                             evt_subtype = "Audio Mode: IN_CALL (Active Call)"
+                        elif "mode = 3" in msg.lower() or "mode=3" in msg.lower():
+                             evt_type = "VOIP"
+                             evt_subtype = "Audio Mode: IN_COMMUNICATION (VoIP)"
+                        elif "mode = 0" in msg.lower() or "mode=0" in msg.lower():
+                             # Mode 0 is NORMAL (Call End usually)
+                             # We only log it if we want to show end of calls clearly
+                             evt_type = "VOIP" 
+                             evt_subtype = "Audio Mode: NORMAL (Call Ended)"
+
+                    # 5c. Telephony/Radio Events (For Fake Call Detection)
                     elif "Telecom" in tag or "InCall" in tag or "RIL" in tag or "GsmCdmaPhone" in tag:
                         evt_type = "LOGCAT_RADIO"
                         evt_subtype = "Radio/Telecom Handshake"
@@ -176,7 +288,7 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                         "timestamp": parsed["timestamp"],
                         "type": evt_type,
                         "subtype": evt_subtype,
-                        "content": f"[{parsed['priority']}/{parsed['tag']}] {parsed['message']}",
+                        "content": clean_string(f"[{parsed['priority']}/{parsed['tag']}] {parsed['message']}"),
                         "severity": parsed["priority"]
                     })
 
@@ -187,12 +299,38 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
         "BANK": re.compile(r'\b(?:credited|debited|transferred|withdrawn|deposited|balance|account|IFSC|NEFT|RTGS|IMPS)\b.*?(?:Rs\.?|INR|₹|rupee|rupees)\s*\d+', re.I),
         "TRANSACTION": re.compile(r'\b(?:paid|sent|received|spent|purchase|bill|invoice|payment|txn|transaction)\b.*?(?:Rs\.?|INR|₹|rupee|rupees)\s*\d+', re.I)
     }
+    
+    # Financial senders (banks, payment apps)
+    FINANCIAL_SENDERS = [
+        "sbi", "hdfc", "icici", "axis", "kotak", "paytm", "phonepe", "gpay", 
+        "google pay", "upi", "bhim", "amazon pay", "cred", "mobikwik", "bank",
+        "freecharge", "pnb", "bob", "canara", "union bank"
+    ]
 
-    def flag_financial_sms(content):
+    def flag_financial_sms(content, sender=""):
+        # Check content patterns first
         for flag, pattern in FINANCIAL_PATTERNS.items():
             if pattern.search(content):
                 return f"FINANCIAL_{flag}"
+        
+        # If sender is from a financial institution, flag it
+        sender_lower = sender.lower()
+        if any(fin_sender in sender_lower for fin_sender in FINANCIAL_SENDERS):
+            return "FINANCIAL_SENDER"
+        
         return None
+    
+    def determine_notification_type(content):
+        """Determine notification subtype from content."""
+        content_lower = content.lower()
+        if "otp" in content_lower or "verification code" in content_lower:
+            return "OTP Notification"
+        elif "alert" in content_lower:
+            return "Alert"
+        elif "reminder" in content_lower:
+            return "Reminder"
+        else:
+            return "Notification"
 
     # 2. Process SMS (Existing logic preserved mostly, ensuring format match)
     sms_path = os.path.join(logs_dir, "sms_logs.txt")
@@ -205,15 +343,43 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                     if len(parts) >= 4:
                         try:
                             ts = datetime.strptime(parts[0].strip(), "%Y-%m-%d %H:%M:%S")
-                            content = f"SMS {parts[1]}: {parts[2]} - {parts[3].strip()}"
-                            financial_flag = flag_financial_sms(content)
-                            subtype = f"{parts[1]} ({financial_flag})" if financial_flag else parts[1]
+                            msg_type = parts[1].strip()
+                            sender = parts[2].strip()
+                            body = parts[3].strip()
+                            content = f"SMS {msg_type}: {sender} - {body}"
+                            
+                            # Check if it's a notification-worthy SMS (OTP, alerts)
+                            if any(kw in content.lower() for kw in ["otp", "code", "verification", "alert"]):
+                                evt_type = "NOTIFICATION"
+                                evt_subtype = determine_notification_type(content)
+                            else:
+                                evt_type = "SMS"
+                                evt_subtype = msg_type
+                            
+                            # Check if it's financial
+                            financial_flag = flag_financial_sms(content, sender)
+                            if financial_flag:
+                                # Override to FINANCIAL if it's a financial SMS
+                                if evt_type == "NOTIFICATION" and "OTP" in financial_flag:
+                                    evt_type = "FINANCIAL"
+                                    evt_subtype = "OTP Received"
+                                elif "SENDER" in financial_flag or "BANK" in financial_flag or "UPI" in financial_flag:
+                                    evt_type = "FINANCIAL"
+                                    if "BANK" in financial_flag:
+                                        evt_subtype = "Bank Transaction"
+                                    elif "UPI" in financial_flag:
+                                        evt_subtype = "UPI Transaction"
+                                    else:
+                                        evt_subtype = "Financial Alert"
+                                else:
+                                    evt_subtype = f"{evt_subtype} ({financial_flag})"
+                            
                             timeline.append({
                                 "timestamp": ts.isoformat(),
-                                "type": "SMS",
-                                "subtype": subtype,
-                                "content": content,
-                                "severity": "I"
+                                "type": evt_type,
+                                "subtype": clean_string(evt_subtype),
+                                "content": clean_string(content),
+                                "severity": "W" if evt_type == "FINANCIAL" else "I"
                             })
                         except: pass
                 elif "address=" in line:
@@ -223,15 +389,36 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                     if addr and body and date:
                         try:
                             ts = datetime.fromtimestamp(int(date.group(1))/1000)
-                            content = f"SMS: {addr.group(1)} - {body.group(1)}"
-                            financial_flag = flag_financial_sms(content)
-                            subtype = f"RAW ({financial_flag})" if financial_flag else "RAW"
+                            sender = addr.group(1)
+                            msg_body = body.group(1)
+                            content = f"SMS: {sender} - {msg_body}"
+                            
+                            # Check if notification-worthy
+                            if any(kw in content.lower() for kw in ["otp", "code", "verification", "alert"]):
+                                evt_type = "NOTIFICATION"
+                                evt_subtype = determine_notification_type(content)
+                            else:
+                                evt_type = "SMS"
+                                evt_subtype = "RAW"
+                            
+                            # Check financial
+                            financial_flag = flag_financial_sms(content, sender)
+                            if financial_flag:
+                                if evt_type == "NOTIFICATION" and "OTP" in financial_flag:
+                                    evt_type = "FINANCIAL"
+                                    evt_subtype = "OTP Received"
+                                elif "SENDER" in financial_flag or "BANK" in financial_flag or "UPI" in financial_flag:
+                                    evt_type = "FINANCIAL"
+                                    evt_subtype = "Bank Transaction" if "BANK" in financial_flag else "UPI Transaction" if "UPI" in financial_flag else "Financial Alert"
+                                else:
+                                    evt_subtype = f"{evt_subtype} ({financial_flag})"
+                            
                             timeline.append({
                                 "timestamp": ts.isoformat(),
-                                "type": "SMS",
-                                "subtype": subtype,
-                                "content": content,
-                                "severity": "I"
+                                "type": evt_type,
+                                "subtype": clean_string(evt_subtype),
+                                "content": clean_string(content),
+                                "severity": "W" if evt_type == "FINANCIAL" else "I"
                             })
                         except: pass
 
@@ -263,7 +450,7 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                         ts = datetime.fromtimestamp(int(date_match.group(1))/1000)
                         
                         number = number_match.group(1)
-                        name = name_match.group(0).split('=')[1] if name_match else "NULL" # group(1) fails if we change regex structure, but (?:) is non-capturing so group(1) is still value
+                        name = name_match.group(0).split('=')[1] if name_match else "NULL" 
                         # Wait, group(1) is correct for (?:^|\s)key=([^,]+)
                         name = name_match.group(1) if name_match else "NULL"
                         
@@ -299,7 +486,7 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                             "timestamp": ts.isoformat(),
                             "type": "CALL",
                             "subtype": f"{type_str} ({app_source})",
-                            "content": f"{summary} (Dur: {duration_match.group(1) if duration_match else '0'}s)",
+                            "content": clean_string(f"{summary} (Dur: {duration_match.group(1) if duration_match else '0'}s)"),
                             "severity": "I"
                         })
                     except Exception as e:
@@ -336,8 +523,8 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                     timeline.append({
                         "timestamp": item.get("timestamp"),
                         "type": evt_type,
-                        "subtype": evt_subtype,
-                        "content": f"[{item.get('app_name', 'Unknown')}] {item.get('title', '')}: {item.get('text', '')}",
+                        "subtype": clean_string(evt_subtype),
+                        "content": clean_string(f"[{item.get('app_name', 'Unknown')}] {item.get('title', '')}: {item.get('text', '')}"),
                         "severity": "W" if evt_type == "FINANCIAL" else "I"
                     })
         except Exception as e:
@@ -356,7 +543,8 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                     score = mule_data["risk_score"]
                     if score > 0:
                         timeline.append({
-                            "timestamp": datetime.now().isoformat(), # No timestamp in analysis, use current or file Mod time
+                            # Use acquisition time (now) if no timestamp, but preferable to use file mod time if possible
+                            "timestamp": datetime.now().isoformat(), 
                             "type": "SECURITY",
                             "subtype": "Risk Assessment",
                             "content": f"Device Risk Score: {score}/100 - {mule_data.get('risk_level', 'Unknown')}",
@@ -367,45 +555,15 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                 if "cloned_apps" in mule_data:
                     for app in mule_data["cloned_apps"]:
                         timeline.append({
-                            "timestamp": datetime.now().isoformat(), # Use current/acquisition time
+                            "timestamp": datetime.now().isoformat(),
                             "type": "SECURITY",
                             "subtype": "Cloned App",
-                            "content": f"Found Cloned/Dual-Space App: {app}",
+                            "content": clean_string(f"Found Cloned/Dual-Space App: {app}"),
                             "severity": "W"
                         })
         except Exception as e:
             print(f"Error processing security alerts: {e}")
 
-    # 6. Process App Usage History (New)
-    usage_path = os.path.join(logs_dir, "usage_stats.txt")
-    if os.path.exists(usage_path):
-        print(f"Processing App Usage: {usage_path}")
-        try:
-            with open(usage_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    # Expected format from enhanced_extraction: 
-                    # "2023-01-01 12:00:00 - com.package.name - LAST_TIME_USED"
-                    # But usagestats dump is raw. We need to check what `enhanced_extraction` writes.
-                    # Actually `enhanced_extraction.py` writes specific parsed lines if we look at it?
-                    # Let's assume it dumps raw `dumpsys usagestats`.
-                    # For now, let's use a regex to find "package=" and "lastTime=" if raw.
-                    # OR if `enhanced_extraction` does parsing, we use that.
-                    # Looking at `enhanced_extraction.py` (assumed), it likely dumps raw.
-                    # Let's adding basic parsing for raw `dumpsys usagestats`.
-                    
-                    if "package=" in line and "lastTime=" in line:
-                        # package=com.google.android.youtube lastTime=2023-10-27 15:30:22
-                        # This is a hypothetical format. `dumpsys usagestats` usually has multi-line blocks.
-                        pass
-                    
-                    # If `enhanced_extraction` saves "usage_stats.txt" as just raw output:
-                    # usage_stats.txt usually contains: "  package: com.foo.bar" ... "    lastTimeUsed: 2023..."
-                    pass 
-        except Exception: pass
-
-    # Actually, to avoid complexity with raw dumpsys parsing in this single file without seeing the format,
-    # let's proceed with `package_dump.txt` which typically has clearer "firstInstallTime" and "lastUpdateTime".
-    
     # 6. Process Package Dump (Enhanced for Installer Source)
     pkg_path = os.path.join(logs_dir, "package_dump.txt")
     if os.path.exists(pkg_path):
@@ -455,7 +613,7 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                                 "timestamp": ts_str,
                                 "type": "APP_LIFECYCLE",
                                 "subtype": f"Install from {src_type}",
-                                "content": f"App Installed: {current_pkg} (Source: {installer_source})",
+                                "content": clean_string(f"App Installed: {current_pkg} (Source: {installer_source})"),
                                 "severity": src_severity
                             })
                         except: pass
@@ -463,43 +621,142 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
             print(f"Error parse package dump: {e}")
 
     # 7. Logcat - Detect "Install Unknown Source" Permission Grant (The "Intent" Proof)
-    # We re-scan parsed logcat events for this specific pattern if we didn't catch it in the main loop
-    # Or better, we add it to the main LOGCAT loop. 
-    # Since we are effectively rewriting the timeline processing, let's just cheat and scan specific permission lines here from raw logcat again? 
-    # No, that's inefficient. 
-    # better to just assume the user relies on "AppOps" or "PermissionController" logs which we might have missed in the main loop categorical filter.
-    # Let's add a specialized quick scan for this specific "Smoking Gun" event.
-    
     if os.path.exists(logcat_path):
         with open(logcat_path, "r", encoding="utf-8", errors="replace") as f:
              for line in f:
                  if "REQUEST_INSTALL_PACKAGES" in line and ("allow" in line or "grant" in line):
                      # 01-20 10:07:00 ... AppOps: ... REQUEST_INSTALL_PACKAGES ... allow
-                     parsed = parse_logcat_line(line)
-                     if parsed:
-                         timeline.append({
-                             "timestamp": parsed["timestamp"],
-                             "type": "SECURITY",
-                             "subtype": "Permission Grant",
-                             "content": f"⚠️ PERMISSION GRANTED: 'Install form Unknown Sources' detected! (User allowed sideloading)",
-                             "severity": "E" # ERROR/CRITICAL
-                         })
+                     try:
+                        parsed = parse_logcat_line(line, log_year)
+                        if parsed:
+                            timeline.append({
+                                "timestamp": parsed["timestamp"],
+                                "type": "SECURITY",
+                                "subtype": "Permission Grant",
+                                "content": f"⚠️ PERMISSION GRANTED: 'Install form Unknown Sources' detected! (User allowed sideloading)",
+                                "severity": "E" # ERROR/CRITICAL
+                            })
+                     except: pass
+                     
+    # 7. VoIP Call Enrichment - Correlate with nearby activity
+    print("Enriching VoIP calls with contextual information...")
+    voip_events = [evt for evt in timeline if evt.get("type") == "VOIP"]
+    
+    if voip_events:
+        # Group VoIP events by proximity (within 30 seconds = same call session)
+        from datetime import timedelta
+        
+        for voip_evt in voip_events:
+            try:
+                voip_time = datetime.fromisoformat(voip_evt["timestamp"])
+                
+                # Find nearby events (±30 seconds)
+                nearby_start = voip_time - timedelta(seconds=30)
+                nearby_end = voip_time + timedelta(seconds=30)
+                
+                nearby_activity = []
+                whatsapp_notifications = []
+                
+                for evt in timeline:
+                    if evt == voip_evt:
+                        continue
+                    
+                    try:
+                        evt_time = datetime.fromisoformat(evt["timestamp"])
+                        
+                        if nearby_start <= evt_time <= nearby_end:
+                            # Check for WhatsApp-related activity
+                            content = evt.get("content", "").lower()
+                            subtype = evt.get("subtype", "").lower()
+                            
+                            if "whatsapp" in content or "whatsapp" in subtype:
+                                time_diff = int((evt_time - voip_time).total_seconds())
+                                nearby_activity.append({
+                                    "time_offset": time_diff,
+                                    "type": evt.get("type"),
+                                    "content": evt.get("content", "")[:100]  # Truncate
+                                })
+                                
+                                if "notification" in content:
+                                    whatsapp_notifications.append({
+                                        "time_offset": time_diff,
+                                        "content": evt.get("content", "")[:100]
+                                    })
+                    except:
+                        pass
+                
+                # Add metadata to VoIP event
+                if nearby_activity or whatsapp_notifications:
+                    voip_evt["metadata"] = voip_evt.get("metadata", {})
+                    voip_evt["metadata"]["nearby_activity_count"] = len(nearby_activity)
+                    voip_evt["metadata"]["nearby_notifications"] = whatsapp_notifications[:3]  # Max 3
+                    voip_evt["metadata"]["correlation_confidence"] = "HIGH" if whatsapp_notifications else "MEDIUM"
+                
+            except Exception as e:
+                print(f"Error enriching VoIP event: {e}")
+                continue
+    
+    # Calculate VoIP call duration by grouping consecutive events
+    if voip_events:
+        voip_sessions = []
+        current_session = []
+        
+        for i, evt in enumerate(voip_events):
+            if not current_session:
+                current_session.append(evt)
+            else:
+                try:
+                    prev_time = datetime.fromisoformat(current_session[-1]["timestamp"])
+                    curr_time = datetime.fromisoformat(evt["timestamp"])
+                    
+                    # If within 15 seconds, same session
+                    if (curr_time - prev_time).total_seconds() <= 15:
+                        current_session.append(evt)
+                    else:
+                        # New session
+                        voip_sessions.append(current_session)
+                        current_session = [evt]
+                except:
+                    pass
+        
+        if current_session:
+            voip_sessions.append(current_session)
+        
+        # Add duration to each session
+        for session in voip_sessions:
+            if len(session) > 1:
+                try:
+                    start_time = datetime.fromisoformat(session[0]["timestamp"])
+                    end_time = datetime.fromisoformat(session[-1]["timestamp"])
+                    duration_seconds = int((end_time - start_time).total_seconds())
+                    
+                    # Add duration to all events in session
+                    for evt in session:
+                        evt["metadata"] = evt.get("metadata", {})
+                        evt["metadata"]["call_duration_seconds"] = duration_seconds
+                        evt["metadata"]["call_session_events"] = len(session)
+                except:
+                    pass
 
-    # Sort by timestamp
-    # Filter out events with None timestamp just in case
+    # 8. Post-Processing: Detect "Ghost" Logs (Gaps in Timeline)
+    # Reformatted logic: Only detect gaps between LOGCAT events.
+    # SMS/Calls are sporadic and gaps there don't mean device is off.
+    
+    # Sort first
     timeline = [t for t in timeline if t.get("timestamp")]
     timeline.sort(key=lambda x: x["timestamp"])
     
-    # 8. Post-Processing: Detect "Ghost" Logs (Gaps in Timeline)
-    # A gap > 10 minutes implies device off, flight mode, or wiped logs.
-    print("Analyzing timeline for Ghost Gaps...")
+    print("Analyzing timeline for Ghost Gaps (Logcat Only)...")
     ghost_events = []
-    GAP_THRESHOLD_SECONDS = 10 * 60 # 10 minutes
+    GAP_THRESHOLD_SECONDS = 30  # 30 seconds - lowered for short captures
     
-    if len(timeline) > 1:
-        for i in range(len(timeline) - 1):
-            current_evt = timeline[i]
-            next_evt = timeline[i+1]
+    # Filter only logcat events for gap detection
+    logcat_events = [t for t in timeline if t.get("type", "").startswith("LOGCAT")]
+    
+    if len(logcat_events) > 1:
+        for i in range(len(logcat_events) - 1):
+            current_evt = logcat_events[i]
+            next_evt = logcat_events[i+1]
             
             try:
                 t1 = datetime.fromisoformat(current_evt["timestamp"])
@@ -516,13 +773,13 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
                     
                     # Create Ghost Event directly after the current event
                     # Timestamp = t1 + 1 second (so it appears right after)
-                    ghost_ts = t1.isoformat() 
+                    ghost_ts = (t1 + timedelta(seconds=1)).isoformat()
                     
                     ghost_events.append({
                         "timestamp": ghost_ts,
                         "type": "GHOST",
                         "subtype": "Log Gap Detected",
-                        "content": f"👻 GHOST GAP: No logs for {gap_msg}. Possible device power-off or data removal.",
+                        "content": f"👻 GHOST GAP: No system logs for {gap_msg}. Possible device power-off or data removal.",
                         "severity": "W"
                     })
             except Exception: pass
@@ -530,7 +787,6 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
     # Merge Ghost events
     timeline.extend(ghost_events)
     timeline.sort(key=lambda x: x["timestamp"])
-
     
     # Save to JSON
     with open(output_file, "w", encoding="utf-8") as f:

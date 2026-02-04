@@ -8,6 +8,20 @@ $basePath = '';
 require_once 'includes/header.php';
 require_once 'includes/sidebar.php';
 
+// Helper for efficient counting
+function countMatchesInFile($filepath, $search) {
+    if (!file_exists($filepath)) return 0;
+    $count = 0;
+    $handle = @fopen($filepath, "r");
+    if ($handle) {
+        while (($line = fgets($handle)) !== false) {
+            $count += substr_count($line, $search);
+        }
+        fclose($handle);
+    }
+    return $count;
+}
+
 // Get stats from log files
 function getStats()
 {
@@ -23,40 +37,45 @@ function getStats()
         'logcatLines' => 0
     ];
 
-    // Count SMS
+    // Count SMS (Optimized)
     $smsFile = $logsPath . '/sms_logs.txt';
+    $stats['smsCount'] = countMatchesInFile($smsFile, 'Row:');
     if (file_exists($smsFile)) {
-        $content = file_get_contents($smsFile);
-        $stats['smsCount'] = substr_count($content, 'Row:');
         $stats['lastExtraction'] = date('Y-m-d H:i:s', filemtime($smsFile));
     }
 
-    // Count Calls
+    // Count Calls (Optimized)
     $callFile = $logsPath . '/call_logs.txt';
-    if (file_exists($callFile)) {
-        $content = file_get_contents($callFile);
-        $stats['callCount'] = substr_count($content, 'Row:');
-    }
+    $stats['callCount'] = countMatchesInFile($callFile, 'Row:');
 
-    // Count Locations
+    // Count Locations (Optimized)
     $locationFile = $logsPath . '/location_logs.txt';
-    if (file_exists($locationFile)) {
-        $content = file_get_contents($locationFile);
-        $stats['locationCount'] = substr_count($content, 'Location[');
-    }
+    $stats['locationCount'] = countMatchesInFile($locationFile, 'Location[');
 
-    // Count Logcat lines
+    // Count Logcat lines (Optimized)
     $logcatFile = $logsPath . '/android_logcat.txt';
     if (file_exists($logcatFile)) {
-        $stats['logcatLines'] = count(file($logcatFile));
+        $linecount = 0;
+        $handle = @fopen($logcatFile, "r");
+        if ($handle) {
+            while(!feof($handle)){
+                fgets($handle);
+                $linecount++;
+            }
+            fclose($handle);
+        }
+        $stats['logcatLines'] = $linecount;
     }
 
     // Count Notifications
     $notifFile = $logsPath . '/notification_timeline.json';
     if (file_exists($notifFile)) {
-        $json = json_decode(file_get_contents($notifFile), true);
-        if (is_array($json)) {
-            $stats['notificationCount'] = count($json);
+        $content = @file_get_contents($notifFile);
+        if ($content) {
+            $json = json_decode($content, true);
+            if (is_array($json)) {
+                $stats['notificationCount'] = count($json);
+            }
         }
     }
 
@@ -64,21 +83,27 @@ function getStats()
     $rootFile = $logsPath . '/root_status.json';
     $stats['rootStatus'] = null;
     if (file_exists($rootFile)) {
-        $stats['rootStatus'] = json_decode(file_get_contents($rootFile), true);
-    }
-
-
-
-    // Check unified timeline for high severity security events if needed
-    $timelineFile = $logsPath . '/unified_timeline.json';
-    if (file_exists($timelineFile)) {
-        // Optional: Scan unified timeline for type=SECURITY
+        $content = @file_get_contents($rootFile);
+        if ($content) {
+            $stats['rootStatus'] = json_decode($content, true);
+        }
     }
 
     return $stats;
 }
 
 $stats = getStats();
+// $stats = [
+//     'smsCount' => 0,
+//     'callCount' => 0,
+//     'locationCount' => 0,
+//     'threatCount' => 0,
+//     'notificationCount' => 0,
+//     'lastExtraction' => '-',
+//     'deviceInfo' => null,
+//     'logcatLines' => 0,
+//     'rootStatus' => null
+// ];
 ?>
 
 <!-- Main Content Wrapper -->
