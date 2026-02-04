@@ -37,7 +37,7 @@ def parse_settings_secure(filepath):
     notif_listeners = []
     
     if not os.path.exists(filepath):
-        print(f"⚠️ File not found: {filepath}")
+        print(f"WARNING: File not found: {filepath}")
         return access_services, notif_listeners
 
     with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
@@ -138,7 +138,7 @@ def parse_package_dump(filepath):
     return sideloaded_apps
 
 def analyze_threats():
-    print("🕵️‍♂️ Starting Threat Analysis...")
+    print("[*] Starting Threat Analysis...")
     
     logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "logs")
     settings_file = os.path.join(logs_dir, "settings_secure.txt")
@@ -218,8 +218,8 @@ def analyze_threats():
     with open(out_file, "w", encoding="utf-8") as f:
         json.dump(report, f, indent=4)
         
-    print(f"✅ Analysis Complete. Found {len(threats)} potential threats.")
-    print(f"   Report saved to {out_file}")
+    print(f"[+] Analysis Complete. Found {len(threats)} potential threats.")
+    print(f"    Report saved to {out_file}")
 
 if __name__ == "__main__":
     analyze_threats()

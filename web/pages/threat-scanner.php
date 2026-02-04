@@ -34,6 +34,23 @@ $riskLevel = $data['risk_level'] ?? 'UNKNOWN';
 $riskScore = $data['risk_score'] ?? 0;
 $threats = $data['threats'] ?? [];
 
+// Sort threats by severity: HIGH > MEDIUM > LOW
+if (!empty($threats)) {
+    usort($threats, function($a, $b) {
+        $severityOrder = ['HIGH' => 3, 'MEDIUM' => 2, 'LOW' => 1];
+        $aSeverity = $severityOrder[$a['severity'] ?? 'LOW'] ?? 0;
+        $bSeverity = $severityOrder[$b['severity'] ?? 'LOW'] ?? 0;
+        
+        // Sort descending (highest severity first)
+        if ($bSeverity !== $aSeverity) {
+            return $bSeverity - $aSeverity;
+        }
+        
+        // If same severity, sort alphabetically by type
+        return strcmp($a['type'] ?? '', $b['type'] ?? '');
+    });
+}
+
 // Auto-run if missing
 $shouldAutoRun = ($data === null);
 
