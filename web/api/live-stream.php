@@ -30,59 +30,93 @@ function sendEvent($data, $event = 'message')
 // Send initial connection message
 sendEvent(['status' => 'connected', 'message' => 'Live monitoring started'], 'status');
 
-$lastPosition = 0;
-$logFile = getLogsPath() . '/android_logcat.txt';
+// Check if ADB is available
+$adbPath = 'adb';  // Assumes adb is in PATH
+exec('adb devices 2>&1', $output, $returnCode);
 
-// Main loop - stream new log lines
+if ($returnCode !== 0) {
+    sendEvent(['status' => 'error', 'message' => 'ADB not found. Please ensure ADB is installed.'], 'status');
+    exit;
+}
+
+// Start ADB logcat process
+$descriptorspec = array(
+    0 => array("pipe", "r"),  // stdin
+    1 => array("pipe", "w"),  // stdout
+    2 => array("pipe", "w")   // stderr
+);
+
+$process = proc_open('adb logcat -v time', $descriptorspec, $pipes);
+
+if (!is_resource($process)) {
+    sendEvent(['status' => 'error', 'message' => 'Failed to start logcat'], 'status');
+    exit;
+}
+
+// Make stdout non-blocking
+stream_set_blocking($pipes[1], false);
+
+$lineBuffer = '';
+$lastHeartbeat = time();
+
+// Main loop - stream logcat output
 while (true) {
     // Check if client disconnected
     if (connection_aborted()) {
         break;
     }
 
-    // Check if log file exists
-    if (file_exists($logFile)) {
-        $currentSize = filesize($logFile);
-
-        if ($currentSize > $lastPosition) {
-            $handle = fopen($logFile, 'r');
-            fseek($handle, $lastPosition);
-
-            while (($line = fgets($handle)) !== false) {
-                $line = trim($line);
-                if (!empty($line)) {
-                    // Parse log level
-                    $level = 'I';
-                    if (preg_match('/\s([VDIWEF])\//', $line, $match)) {
-                        $level = $match[1];
-                    }
-
-                    // Parse tag
-                    $tag = 'System';
-                    if (preg_match('/[VDIWEF]\/([^:]+):/', $line, $match)) {
-                        $tag = trim($match[1]);
-                    }
-
-                    sendEvent([
-                        'line' => $line,
-                        'level' => $level,
-                        'tag' => $tag,
-                        'timestamp' => date('H:i:s')
-                    ], 'log');
+    // Read from logcat
+    $data = fread($pipes[1], 4096);
+    
+    if ($data !== false && $data !== '') {
+        $lineBuffer .= $data;
+        
+        // Process complete lines
+        while (($pos = strpos($lineBuffer, "\n")) !== false) {
+            $line = substr($lineBuffer, 0, $pos);
+            $lineBuffer = substr($lineBuffer, $pos + 1);
+            
+            $line = trim($line);
+            if (!empty($line)) {
+                // Parse log level
+                $level = 'I';
+                if (preg_match('/\s([VDIWEF])\//', $line, $match)) {
+                    $level = $match[1];
                 }
-            }
 
-            $lastPosition = ftell($handle);
-            fclose($handle);
+                // Parse tag
+                $tag = 'System';
+                if (preg_match('/[VDIWEF]\/([^:]+):/', $line, $match)) {
+                    $tag = trim($match[1]);
+                }
+
+                sendEvent([
+                    'line' => $line,
+                    'level' => $level,
+                    'tag' => $tag,
+                    'timestamp' => date('H:i:s')
+                ], 'log');
+            }
         }
     }
 
     // Send heartbeat every 5 seconds
-    sendEvent(['status' => 'alive', 'time' => date('H:i:s')], 'heartbeat');
+    if (time() - $lastHeartbeat >= 5) {
+        sendEvent(['status' => 'alive', 'time' => date('H:i:s')], 'heartbeat');
+        $lastHeartbeat = time();
+    }
 
-    // Wait before checking again
-    sleep(1);
+    // Small sleep to prevent CPU overload
+    usleep(100000); // 100ms
 }
+
+// Cleanup
+fclose($pipes[0]);
+fclose($pipes[1]);
+fclose($pipes[2]);
+proc_terminate($process);
 
 // Send disconnect message
 sendEvent(['status' => 'disconnected'], 'status');
+

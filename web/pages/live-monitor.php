@@ -258,8 +258,8 @@ function startLiveMonitor() {
     const logConsole = document.getElementById('liveLogConsole');
     appendLiveLine('🟢 Live monitoring started...', 'success');
     
-    // Simulate live monitoring (in production, use SSE)
-    simulateLiveMonitor();
+    // Connect to real SSE backend
+    connectToLiveStream();
 }
 
 function stopLiveMonitor() {
@@ -309,36 +309,64 @@ function checkThreats(lineContent) {
     return null;
 }
 
-function simulateLiveMonitor() {
-    // Sample log lines for simulation
-    const sampleLogs = [
-        { level: 'I', tag: 'ActivityManager', msg: 'Start proc com.example.app for activity' },
-        { level: 'D', tag: 'ViewRootImpl', msg: 'performTraversals: mFirst=false mWillDraw=true' },
-        { level: 'W', tag: 'System', msg: 'A resource failed to call close.' },
-        { level: 'E', tag: 'AndroidRuntime', msg: 'FATAL EXCEPTION: main' },
-        { level: 'I', tag: 'PackageManager', msg: 'Package installed: com.example.newapp' },
-        { level: 'D', tag: 'ConnectivityManager', msg: 'NetworkInfo: type=WIFI, state=CONNECTED' },
-        { level: 'V', tag: 'AudioTrack', msg: 'setVolume(0.5, 0.5)' },
-        { level: 'I', tag: 'GCMonitor', msg: 'GC_CONCURRENT freed 2MB, 45% free' },
-        // Add fake threats for testing
-        { level: 'W', tag: 'AccessibilityManager', msg: 'Accessibility Service ENABLED for com.mspy.agent' },
-        { level: 'I', tag: 'SMSReceiver', msg: 'OTP detected in incoming SMS, broadcasting...' }
-    ];
+function connectToLiveStream() {
+    // Create EventSource connection to live-stream.php
+    ForensicApp.state.eventSource = new EventSource('../api/live-stream.php');
     
-    const interval = setInterval(() => {
-        if (!ForensicApp.state.isMonitoring) {
-            clearInterval(interval);
-            return;
-        }
-        
+    // Handle default message events (fallback)
+    ForensicApp.state.eventSource.onmessage = function(e) {
         if (isPaused) return;
+        console.log('SSE Default Message:', e.data);
         
-        const log = sampleLogs[Math.floor(Math.random() * sampleLogs.length)];
-        const timestamp = new Date().toTimeString().split(' ')[0];
-        const line = `${timestamp} ${log.level}/${log.tag}: ${log.msg}`;
+        try {
+            const data = JSON.parse(e.data);
+            const line = data.line || e.data;
+            const level = data.level || 'I';
+            appendLiveLine(line, getLevelClass(level), level);
+        } catch(err) {
+            // If not JSON, just display raw
+            appendLiveLine(e.data, 'info', 'I');
+        }
+    };
+    
+    // Handle incoming log events
+    ForensicApp.state.eventSource.addEventListener('log', function(e) {
+        if (isPaused) return;
+        console.log('SSE Log Event:', e.data);
         
-        appendLiveLine(line, getLevelClass(log.level), log.level);
-    }, 500);
+        const data = JSON.parse(e.data);
+        const line = data.line;
+        const level = data.level;
+        
+        appendLiveLine(line, getLevelClass(level), level);
+    });
+    
+    // Handle status events
+    ForensicApp.state.eventSource.addEventListener('status', function(e) {
+        const data = JSON.parse(e.data);
+        console.log('SSE Status:', data.message);
+        appendLiveLine('📡 ' + data.message, 'info');
+    });
+    
+    // Handle heartbeat
+    ForensicApp.state.eventSource.addEventListener('heartbeat', function(e) {
+        // Keep connection alive
+        console.log('SSE Heartbeat received');
+    });
+    
+    // Handle connection open
+    ForensicApp.state.eventSource.onopen = function(e) {
+        console.log('SSE Connection Opened');
+        appendLiveLine('✅ Connected to live stream', 'success');
+    };
+    
+    // Handle errors
+    ForensicApp.state.eventSource.onerror = function(e) {
+        console.error('SSE Error:', e);
+        if (ForensicApp.state.isMonitoring) {
+            appendLiveLine('⚠️ Connection lost. Attempting to reconnect...', 'warning');
+        }
+    };
 }
 
 function appendLiveLine(text, levelClass = 'info', level = 'I') {

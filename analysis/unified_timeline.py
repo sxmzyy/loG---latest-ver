@@ -748,7 +748,7 @@ def generate_timeline(logs_dir="logs", output_file="logs/unified_timeline.json")
     
     print("Analyzing timeline for Ghost Gaps (Logcat Only)...")
     ghost_events = []
-    GAP_THRESHOLD_SECONDS = 30  # 30 seconds - lowered for short captures
+    GAP_THRESHOLD_SECONDS = 0.5  # Lowered to detect small gaps (for demo/testing)
     
     # Filter only logcat events for gap detection
     logcat_events = [t for t in timeline if t.get("type", "").startswith("LOGCAT")]
