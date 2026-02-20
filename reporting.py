@@ -240,8 +240,10 @@ def _collect_context():
             android_version = "Unknown"
 
     # 3. Get Kernel
-    # Rarely in props, so we check the top of logcat efficiently
-    kernel = _get_kernel_version_safe()
+    kernel = props.get("ro.kernel.version")
+    if not kernel or kernel == "Unknown":
+        # Rarely in props on older devices, so we check the top of logcat efficiently
+        kernel = _get_kernel_version_safe()
 
     device_info = {
         "model": model,
@@ -353,152 +355,7 @@ def _format_file_size(size_bytes):
         size_bytes /= 1024.0
     return f"{size_bytes:.2f} TB"
 
-def _collect_context():
-    now = datetime.now()
-    device_info = {
-        "model": "Unknown",
-        "android_version": "Unknown",
-        "kernel": "Unknown",
-    }
-    
-    # PRIORITY 1: Read from device_info.txt if available (most reliable)
-    device_info_path = "logs/device_info.txt"
-    if os.path.exists(device_info_path):
-        try:
-            with open(device_info_path, 'r', encoding='utf-8', errors='replace') as f:
-                content = f.read()
-                
-                # Extract model
-                model_match = re.search(r'Model:\s*(.+)', content)
-                if model_match:
-                    device_info["model"] = model_match.group(1).strip()
-                
-                # Extract Android version
-                android_match = re.search(r'Android Version:\s*(.+)', content)
-                if android_match:
-                    device_info["android_version"] = android_match.group(1).strip()
-                
-                # Extract kernel
-                kernel_match = re.search(r'Kernel:\s*(.+)', content)
-                if kernel_match:
-                    device_info["kernel"] = kernel_match.group(1).strip()
-                    
-                print(f"✓ Device info loaded from device_info.txt")
-        except Exception as e:
-            print(f"Warning: Could not parse device_info.txt: {e}")
-    
-    # FALLBACK: Try extracting from logcat if device_info.txt failed
-    if device_info["model"] == "Unknown" or device_info["android_version"] == "Unknown":
-        raw_log = "".join(_load_lines("logs/android_logcat.txt"))
-        
-        # Try multiple patterns for device model
-        if device_info["model"] == "Unknown":
-            model_patterns = [
-                r'ro\.product\.model[=:]\s*([^\s,\]]+)',
-                r'model=([^,\s\]]+)',
-                r'Build/([A-Z0-9]+)',
-                r'Device:\s*([^\s,]+)'
-            ]
-            for pattern in model_patterns:
-                model_match = re.search(pattern, raw_log, re.IGNORECASE)
-                if model_match:
-                    device_info["model"] = model_match.group(1)
-                    break
-        
-        # Try multiple patterns for Android version
-        if device_info["android_version"] == "Unknown":
-            version_patterns = [
-                r'ro\.build\.version\.release[=:]\s*(\d+(?:\.\d+)?)',
-                r'Android\s+(\d+(?:\.\d+)?)',
-                r'SDK:\s*(\d+)',
-                r'API\s+level\s+(\d+)'
-            ]
-            for pattern in version_patterns:
-                version_match = re.search(pattern, raw_log, re.IGNORECASE)
-                if version_match:
-                    ver = version_match.group(1)
-                    try:
-                        # Convert SDK level to Android version if needed
-                        if ver.isdigit() and int(ver) > 20:
-                            sdk_to_android = {
-                                '34': '14', '33': '13', '32': '12L', '31': '12',
-                                '30': '11', '29': '10', '28': '9', '27': '8.1',
-                                '26': '8.0', '25': '7.1', '24': '7.0'
-                            }
-                            device_info["android_version"] = sdk_to_android.get(ver, ver)
-                        else:
-                            device_info["android_version"] = ver
-                        break
-                    except ValueError:
-                        device_info["android_version"] = ver
-                        break
-        
-        # Try multiple patterns for kernel version
-        if device_info["kernel"] == "Unknown":
-            kernel_patterns = [
-                r'Linux\s+version\s+([^\s]+)',
-                r'Kernel:\s*([^\s,]+)',
-                r'ro\.kernel\.version[=:]\s*([^\s,\]]+)'
-            ]
-            for pattern in kernel_patterns:
-                kernel_match = re.search(pattern, raw_log, re.IGNORECASE)
-                if kernel_match:
-                    device_info["kernel"] = kernel_match.group(1)
-                    break
 
-    # Load Section 65B data from JSON if available
-    section_65b_data = None
-    section_65b_file = "logs/section_65b_data.json"
-    if os.path.exists(section_65b_file):
-        try:
-            import json
-            with open(section_65b_file, 'r', encoding='utf-8') as f:
-                section_65b_data = json.load(f)
-        except Exception as e:
-            print(f"Warning: Could not load Section 65B data: {e}")
-    
-    # If Section 65B data not available, create basic version
-    if not section_65b_data:
-        section_65b_data = {
-            "acquisition_time": now.strftime("%Y-%m-%d %H:%M:%S"),
-            "acquisition_date": now.strftime("%d/%m/%Y"),
-            "acquisition_time_only": now.strftime("%H:%M:%S"),
-            "evidence_hashes": _calculate_file_hashes(),
-            "device_identifiers": device_info,
-            "examiner": "Digital Forensic Analyst",
-            "case_number": "123456",
-            "total_evidence_files": len(_calculate_file_hashes()),
-        }
-    
-    # Ensure evidence_hashes exists even if loaded from JSON
-    if "evidence_hashes" not in section_65b_data or not section_65b_data["evidence_hashes"]:
-        print("ℹ️  Calculating evidence hashes (missing in source data)...")
-        section_65b_data["evidence_hashes"] = _calculate_file_hashes()
-        section_65b_data["total_evidence_files"] = len(section_65b_data["evidence_hashes"])
-
-    return {
-        "generated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-        "case_number": section_65b_data.get("case_number", "123456"),
-        "examiner": section_65b_data.get("examiner", "Digital Forensic Analyst"),
-        "device": device_info,
-        "calls": _summarize_calls(),
-        "sms": _summarize_sms(),
-        "logcat": _summarize_logcat(),
-        "chain_of_custody": [
-            "Evidence acquired from the Android device using approved ADB tools.",
-            "Logs extracted include Android Logcat, Call Logs, and SMS Logs.",
-            "Files verified with cryptographic hashes immediately after acquisition.",
-            "Analysis steps documented to preserve chain-of-custody integrity.",
-        ],
-        "methodology": [
-            "ADB-based acquisition of logcat, call, and SMS datasets.",
-            "Filtering by time range, keyword, severity, and subtype for targeted review.",
-            "Visualization of temporal activity and frequency distributions.",
-            "Threat triage and report packaging for court-ready evidence.",
-        ],
-        # TGCSB Section 65B Certificate (Indian Evidence Act, 1872)
-        "section_65b": section_65b_data
-    }
 
 def _render_html(context):
     base_dir = os.path.dirname(os.path.abspath(__file__))
